@@ -1,412 +1,949 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ステップ型フォーム GUIジェネレーター (カラー変更・スライド対応版)</title>
-<style>
-  :root {
-    --base-color: #2196F3;
-    --primary-color: #2196F3;
-    --primary-hover-color: #0061d4;
-    --progress-bg-color: #e8f4f8; /* 追加：プログレスバーの背景色 */
-    --error-color: #e74c3c;
-    --bg-color: #f5f9fa; /* プレビューエリア全体の固定背景色 */
-    --border-color: #ccc;
-    --text-color: #333;
-    --editor-bg: #2d2d2d;
-    --editor-card: #3d3d3d;
-  }
-  body {
-    margin: 0;
-    font-family: "Helvetica Neue", Arial, sans-serif;
-    display: flex;
-    height: 100vh;
-    color: var(--text-color);
-  }
-  
-  /* 左側：プレビューエリア */
-  .preview-pane {
-    width: 60%;
-    background: var(--bg-color);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    overflow-y: auto;
-    padding: 40px 20px;
-    box-sizing: border-box;
-  }
-  #form-container {
-    width: 100%;
-    max-width: 600px;
-    background: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border-radius: 8px;
-    overflow: hidden;
-    display: none;
-  }
-  #form-steps-wrapper {
-    display: flex;
-    width: 100%;
-    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-    align-items: flex-start;
-  }
-  .step-content { 
-    padding: 30px; 
-    flex: 0 0 100%; 
-    width: 100%; 
-    box-sizing: border-box;
-  }
-
-  /* 右側：エディタエリア */
-  .editor-pane {
-    width: 40%;
-    background: var(--editor-bg);
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box;
-    border-left: 2px solid #1a1a1a;
-  }
-  
-  /* ▼▼ カラー設定エリア ▼▼ */
-  .color-settings {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 15px 20px;
-    background: #1e1e1e;
-    border-bottom: 1px solid #333;
-    font-size: 12px;
-  }
-  .color-settings label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #aaa;
-    cursor: pointer;
-  }
-  .color-settings input[type="color"] {
-    border: none;
-    width: 26px;
-    height: 26px;
-    padding: 0;
-    background: transparent;
-    cursor: pointer;
-  }
-
-  /* タブUI */
-  .editor-tabs { display: flex; background: #1a1a1a; }
-  .tab-btn { flex: 1; padding: 15px; background: #1a1a1a; color: #888; border: none; cursor: pointer; font-size: 14px; font-weight: bold; border-bottom: 3px solid transparent; }
-  .tab-btn.active { color: #fff; border-bottom-color: var(--base-color); background: var(--editor-bg); }
-  .tab-content { display: none; padding: 20px; overflow-y: auto; flex-grow: 1; }
-  .tab-content.active { display: block; }
-
-  /* 入出力エリア */
-  #io-textarea { width: 100%; height: 400px; font-family: monospace; font-size: 14px; padding: 10px; border-radius: 4px; border: 1px solid #555; background: #1e1e1e; color: #d4d4d4; resize: vertical; box-sizing: border-box; margin-bottom: 15px; }
-  .io-actions { display: flex; gap: 10px; }
-
-  /* エディタ内のUIパーツ (アコーディオン化対応) */
-  .step-card { background: var(--editor-card); border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--base-color); overflow: hidden; }
-  .step-header { font-size: 16px; font-weight: bold; padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: #333; transition: background 0.2s; }
-  .step-header:hover { background: #3a3a3a; }
-  .step-title-area { display: flex; align-items: center; gap: 10px; }
-  .accordion-icon { font-size: 12px; transition: transform 0.3s; display: inline-block; }
-  .step-card.active .accordion-icon { transform: rotate(90deg); }
-  .step-card.active .step-body { display: block; }
-  .step-body { display: none; padding: 15px; border-top: 1px solid #444; }
-  .question-card { background: #2a2a2a; border-radius: 6px; padding: 15px; margin-bottom: 15px; border: 1px solid #444; position: relative; }
-  
-  /* 順番制御エリア */
-  .order-controls { display: flex; justify-content: space-between; align-items: center; background: #1e1e1e; padding: 8px 12px; margin-bottom: 15px; border-radius: 4px; }
-  .order-controls select { background: #333; color: #fff; border: 1px solid #555; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-
-  /* 入力欄（子要素）のカード */
-  .sub-field-card { background: #1e1e1e; border: 1px dashed #555; border-radius: 4px; padding: 10px; margin-bottom: 10px; }
-  .sub-field-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; color: #aaa; }
-  .editor-field { margin-bottom: 10px; }
-  .editor-field label { display: block; font-size: 12px; color: #aaa; margin-bottom: 4px; }
-  .editor-field input[type="text"], .editor-field select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #555; background: #2d2d2d; color: #fff; box-sizing: border-box; }
-  .editor-field input[type="text"]:focus, .editor-field select:focus { outline: none; border-color: var(--primary-color); }
-  .editor-field-inline { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-  .editor-flex-row { display: flex; gap: 10px; }
-  .editor-flex-row > div { flex: 1; }
-  
-  /* ボタン類 */
-  .btn-sm { padding: 6px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; font-weight: bold; text-align: center; }
-  .btn-sm:disabled { opacity: 0.3; cursor: not-allowed; }
-  .btn-control { background: #444; color: #fff; }
-  .btn-control:hover:not(:disabled) { background: #555; }
-  .btn-danger { background: var(--error-color); color: white; }
-  .btn-primary { background: var(--base-color); color: white; }
-  .btn-add { background: #4CAF50; color: white; width: 100%; padding: 10px; margin-top: 5px; }
-  .btn-add-sub { background: #555; color: white; width: 100%; padding: 8px; margin-top: 5px; border: 1px dashed #888; }
-  .btn-add-step { background: var(--primary-color); color: white; width: 100%; padding: 12px; margin-top: 10px; }
-  .btn-sm:hover:not(:disabled), .btn-add-sub:hover { opacity: 0.8; }
-
-  /* プレビュー側のフォームデザイン */
-  .form-group { margin-bottom: 25px; }
-  .form-header { display: flex; align-items: center; margin-bottom: 10px; }
-  .badge { padding: 2px 8px; border-radius: 4px; font-size: 12px; color: white; font-weight: bold; }
-  .badge.required { background: var(--error-color); }
-  .badge.optional { background: #95a5a6; }
-  .form-label { font-size: 16px; font-weight: bold; margin-left: 10px; }
-  .form-hint { font-size: 12px; color: #7f8c8d; margin-left: 10px; }
-  .fields-container { display: flex; gap: 10px; flex-wrap: wrap; }
-  .field-wrapper { display: flex; align-items: center; flex-grow: 1; position: relative; }
-  .field-wrapper.col { flex-direction: column; align-items: flex-start; width: 100%; }
-  .prefix, .suffix { font-size: 14px; color: #555; white-space: nowrap; margin: 0 5px; }
-  input.form-input, select.form-select, textarea.form-textarea { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 16px; box-sizing: border-box; }
-  input.form-input:focus, select.form-select:focus, textarea.form-textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2); }
-  
-  .check-radio-label { display: flex; align-items: center; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; flex-grow: 1; min-width: 120px; background: white; }
-  .check-radio-label:has(input:checked) { border-color: var(--primary-color); background: rgba(33, 150, 243, 0.1); }
-  .check-radio-label input.no-mark { appearance: none; width: 0; margin: 0; }
-  .error-message { color: var(--error-color); font-size: 12px; margin-top: 5px; display: none; }
-  .validation-mark { position: absolute; right: 10px; color: #4CAF50; font-weight: bold; display: none; }
-
-  /* ナビゲーション */
-  .form-navigation { display: flex; justify-content: center; gap: 15px; padding: 20px 30px; background: white; border-top: 1px solid #eee; z-index: 10; position: relative; }
-  .btn { padding: 12px 40px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; transition: background-color 0.2s; }
-  .btn-prev { background: #f0f0f0; color: #555; }
-  .btn-next { background: #d0e4f5; color: white; }
-  .btn-next.active { background: var(--primary-color); }
-  .btn-next.active:hover { background: var(--primary-hover-color); }
-
-  /* プログレスバー (背景色を変数化) */
-  .progress-container { background: var(--progress-bg-color); padding: 15px 30px; display: flex; align-items: center; border-top: 1px solid #e0e0e0; transition: background-color 0.3s; }
-  .progress-bar-bg { flex-grow: 1; height: 10px; background: white; border-radius: 5px; border: 1px solid #d0d0d0; overflow: hidden; margin-right: 15px; }
-  .progress-bar-fill { height: 100%; background: var(--primary-color); width: 0%; transition: width 0.3s ease; }
-  .progress-text { font-weight: bold; font-size: 18px; }
-  .progress-text span { color: #888; font-size: 14px; font-weight: normal; }
-</style>
-</head>
-<body>
-
-<!-- 左側：プレビューエリア -->
-<div class="preview-pane">
-  <div id="form-container">
-    <div id="form-steps-wrapper"></div>
-    <div class="form-navigation">
-      <button class="btn btn-prev" id="btn-prev" style="display:none;">戻る</button>
-      <button class="btn btn-next active" id="btn-next">次へ</button>
-    </div>
-    <div class="progress-container">
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="progress-fill"></div>
-      </div>
-      <div class="progress-text" id="progress-text">1 <span>/ 1</span></div>
-    </div>
-  </div>
-</div>
-
-<!-- 右側：エディタエリア -->
-<div class="editor-pane">
-  <div class="color-settings">
-    <label>
-      <input type="color" id="color-primary" value="#2196f3"> メイン
-    </label>
-    <label>
-      <input type="color" id="color-primary-hover" value="#0061d4"> ホバー
-    </label>
-    <label>
-      <input type="color" id="color-progress-bg" value="#e8f4f8"> プログレスバー背景
-    </label>
-  </div>
-
-  <div class="editor-tabs">
-    <button class="tab-btn active" onclick="switchTab(event, 'gui')">GUIエディタ</button>
-    <button class="tab-btn" onclick="switchTab(event, 'io')">データ入出力</button>
-  </div>
-
-  <div id="tab-gui" class="tab-content active">
-    <div id="editor-container"></div>
-  </div>
-
-  <div id="tab-io" class="tab-content">
-    <p style="font-size:12px; color:#aaa; margin-top:0;">オブジェクト配列を貼り付けて「読み込み」を押すか、エディタの状態を「書き出し」できます。</p>
-    <textarea id="io-textarea" placeholder="ここに form-content.js のようなオブジェクトを貼り付けます"></textarea>
-    <div class="io-actions">
-      <button class="btn-sm btn-primary" style="flex:1; padding:12px;" onclick="importData()">オブジェクトを読み込む</button>
-      <button class="btn-sm btn-add" style="flex:1; margin-top:0; padding:12px;" onclick="exportData()">オブジェクトを書き出す</button>
-    </div>
-  </div>
-</div>
-
-<script>
-  let formData = [];
-  let currentStepIndex = 0;
-
-  const editorContainer = document.getElementById('editor-container');
-  const formContainer = document.getElementById('form-container');
-
-  // ============== カラー変更機能 ==============
-  document.getElementById('color-primary').addEventListener('input', function(e) {
-    document.documentElement.style.setProperty('--primary-color', e.target.value);
-    
-    const hex = e.target.value.replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    
-    let style = document.getElementById('dynamic-color-style');
-    if (!style) {
-      style = document.createElement('style');
-      style.id = 'dynamic-color-style';
-      document.head.appendChild(style);
-    }
-    style.innerHTML = `.check-radio-label:has(input:checked) { background: rgba(${r}, ${g}, ${b}, 0.1); }`;
-  });
-
-  document.getElementById('color-primary-hover').addEventListener('input', function(e) {
-    document.documentElement.style.setProperty('--primary-hover-color', e.target.value);
-  });
-
-  document.getElementById('color-progress-bg').addEventListener('input', function(e) {
-    document.documentElement.style.setProperty('--progress-bg-color', e.target.value);
-  });
-
-  // ============== タブ切り替え ==============
-  function switchTab(e, tabId) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    if(e && e.target) e.target.classList.add('active');
-    document.getElementById('tab-' + tabId).classList.add('active');
-  }
-
-  // ============== データの正規化 (自動整理) ==============
-  function normalizeData() {
-    const stepsMap = {};
-    formData.forEach(item => {
-      if (!stepsMap[item.step]) stepsMap[item.step] = [];
-      stepsMap[item.step].push(item);
-    });
-
-    const sortedSteps = Object.keys(stepsMap).map(Number).sort((a, b) => a - b);
-    let newFormData = [];
-    let newStepNum = 1;
-
-    sortedSteps.forEach(oldStep => {
-      const items = stepsMap[oldStep].sort((a, b) => (a.order || 0) - (b.order || 0));
-      items.forEach((item, index) => {
-        item.step = newStepNum;
-        item.order = index + 1;
-        newFormData.push(item);
-      });
-      newStepNum++;
-    });
-
-    formData = newFormData;
-
-    const totalSteps = [...new Set(formData.map(d => d.step))].length;
-    if (currentStepIndex >= totalSteps) {
-      currentStepIndex = Math.max(0, totalSteps - 1);
-    }
-  }
-
-  // ============== データ入出力 ==============
-  function importData() {
-    const rawVal = document.getElementById('io-textarea').value.trim();
-    if (!rawVal) { alert('データが入力されていません'); return; }
-    try {
-      let data = new Function('return [' + rawVal + ']')();
-      data = Array.isArray(data[0]) ? data[0] : data;
-
-      formData = data.map((item, idx) => ({
-        ...item,
-        id: Date.now().toString() + '_' + idx,
-        step: item.step || 1,
-        order: item.order || (idx + 1),
-        field: item.field || []
-      }));
-
-      currentStepIndex = 0;
-      normalizeData();
-      renderEditor();
-      generateForm();
-      alert('正常に読み込みました。');
-      switchTab({ target: document.querySelector('.tab-btn') }, 'gui');
-    } catch (e) {
-      alert('読み込みに失敗しました。構文エラーがないか確認してください。\n詳細: ' + e.message);
-    }
-  }
-
-  function exportData() {
-    normalizeData();
-    if (formData.length === 0) { alert('出力するデータがありません。'); return; }
-    const exportData = formData.map(item => {
-      const { id, ...rest } = item;
-      return rest;
-    });
-    
-    exportData.sort((a, b) => {
-      if (a.step !== b.step) return a.step - b.step;
-      return a.order - b.order;
-    });
-
-    let jsonStr = JSON.stringify(exportData, null, 2);
-    let jsObjStr = jsonStr.replace(/"([^"]+)":/g, '$1:');
-    document.getElementById('io-textarea').value = jsObjStr;
-    alert('エディタのデータを書き出しました。');
-  }
-
-  // ============== 右側：エディタの描画 ==============
-  function renderEditor() {
-    editorContainer.innerHTML = '';
-    const stepsData = {};
-    formData.forEach(item => {
-      if (!stepsData[item.step]) stepsData[item.step] = [];
-      stepsData[item.step].push(item);
-    });
-
-    const stepKeys = Object.keys(stepsData).map(Number).sort((a, b) => a - b);
-    const maxStep = stepKeys.length > 0 ? Math.max(...stepKeys) : 0;
-
-    if (stepKeys.length === 0) {
-      editorContainer.innerHTML = '<p style="color:#aaa; text-align:center;">ステップがありません。「新しいステップを追加」を押してください。</p>';
-    }
-
-    const generateStepOptions = (currentStep) => {
-      let optionsHtml = '';
-      const maxAllowed = maxStep + 1;
-      for (let i = 1; i <= maxAllowed; i++) {
-        optionsHtml += `<option value="${i}" ${i === currentStep ? 'selected' : ''}>ステップ ${i}${i === maxAllowed ? ' (新規)' : ''}</option>`;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      ステップ型フォーム GUIジェネレーター (カラー変更・スライド対応版)
+    </title>
+    <style>
+      :root {
+        --base-color: #3991e2;
+        --primary-color: #3991e2;
+        --primary-hover-color: #1568b9;
+        --progress-bg-color: #f1fbff;
+        --error-color: #ff7f72;
+        --bg-color: #f5f9fa;
+        --border-color: #d9d9d9;
+        --text-color: #333;
+        --editor-bg: #2d2d2d;
+        --editor-card: #3d3d3d;
       }
-      return optionsHtml;
-    };
+      body {
+        margin: 0;
+        font-family:
+          'Hiragino Kaku Gothic Pro', Meiryo, Osaka, 'MS PGothic', sans-serif;
+        display: flex;
+        height: 100vh;
+        color: var(--text-color);
+      }
 
-    stepKeys.forEach((step, index) => {
-      const stepCard = document.createElement('div');
-      stepCard.className = `step-card ${index === currentStepIndex ? 'active' : ''}`;
-      
-      const header = document.createElement('div');
-      header.className = 'step-header';
-      header.onclick = () => {
-        currentStepIndex = index;
-        updateNavigation(); 
-      };
+      /* 左側：プレビューエリア */
+      .preview-pane {
+        width: 60%;
+        background: var(--bg-color);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        overflow-y: auto;
+        padding: 40px 20px;
+        box-sizing: border-box;
+      }
+      #form-container {
+        width: 100%;
+        max-width: 685px; /* Vueコンポーネントの width: 685px に準拠 */
+        background: white;
+        border: solid 1px #dcdcdc;
+        overflow: hidden;
+        display: none;
+        overflow-y: auto;
+      }
+      #form-steps-wrapper {
+        display: flex;
+        width: 100%;
+        transition:
+          transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+          height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        align-items: flex-start;
+      }
+      .step-content {
+        padding: 24px 43px;
+        flex: 0 0 100%;
+        width: 100%;
+        box-sizing: border-box;
+      }
 
-      header.innerHTML = `
+      /* 右側：エディタエリア */
+      .editor-pane {
+        width: 40%;
+        background: var(--editor-bg);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        border-left: 2px solid #1a1a1a;
+      }
+
+      /* ▼▼ カラー設定エリア ▼▼ */
+      .color-settings {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 15px 20px;
+        background: #1e1e1e;
+        border-bottom: 1px solid #333;
+        font-size: 12px;
+      }
+      .color-settings label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #aaa;
+        cursor: pointer;
+      }
+      .color-settings input[type='color'] {
+        border: none;
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      /* タブUI */
+      .editor-tabs {
+        display: flex;
+        background: #1a1a1a;
+      }
+      .tab-btn {
+        flex: 1;
+        padding: 15px;
+        background: #1a1a1a;
+        color: #888;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        border-bottom: 3px solid transparent;
+      }
+      .tab-btn.active {
+        color: #fff;
+        border-bottom-color: var(--base-color);
+        background: var(--editor-bg);
+      }
+      .tab-content {
+        display: none;
+        padding: 20px;
+        overflow-y: auto;
+        flex-grow: 1;
+      }
+      .tab-content.active {
+        display: block;
+      }
+
+      /* 入出力エリア */
+      #io-textarea {
+        width: 100%;
+        height: 400px;
+        font-family: monospace;
+        font-size: 14px;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #555;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        resize: vertical;
+        box-sizing: border-box;
+        margin-bottom: 15px;
+      }
+      .io-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      /* エディタ内のUIパーツ (アコーディオン化対応) */
+      .step-card {
+        background: var(--editor-card);
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 4px solid var(--base-color);
+        overflow: hidden;
+      }
+      .step-header {
+        font-size: 16px;
+        font-weight: bold;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        background: #333;
+        transition: background 0.2s;
+      }
+      .step-header:hover {
+        background: #3a3a3a;
+      }
+      .step-title-area {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .accordion-icon {
+        font-size: 12px;
+        transition: transform 0.3s;
+        display: inline-block;
+      }
+      .step-card.active .accordion-icon {
+        transform: rotate(90deg);
+      }
+      .step-card.active .step-body {
+        display: block;
+      }
+      .step-body {
+        display: none;
+        padding: 15px;
+        border-top: 1px solid #444;
+      }
+      .question-card {
+        background: #2a2a2a;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border: 1px solid #444;
+        position: relative;
+      }
+
+      /* 順番制御エリア */
+      .order-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #1e1e1e;
+        padding: 8px 12px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+      }
+      .order-controls select {
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+
+      /* 入力欄（子要素）のカード */
+      .sub-field-card {
+        background: #1e1e1e;
+        border: 1px dashed #555;
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      .sub-field-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 12px;
+        color: #aaa;
+      }
+      .editor-field {
+        margin-bottom: 10px;
+      }
+      .editor-field label {
+        display: block;
+        font-size: 12px;
+        color: #aaa;
+        margin-bottom: 4px;
+      }
+      .editor-field input[type='text'],
+      .editor-field select {
+        width: 100%;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #555;
+        background: #2d2d2d;
+        color: #fff;
+        box-sizing: border-box;
+      }
+      .editor-field input[type='text']:focus,
+      .editor-field select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+      }
+      .editor-field-inline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+      }
+      .editor-flex-row {
+        display: flex;
+        gap: 10px;
+      }
+      .editor-flex-row > div {
+        flex: 1;
+      }
+
+      /* ボタン類 */
+      .btn-sm {
+        padding: 6px 10px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+      }
+      .btn-sm:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .btn-control {
+        background: #444;
+        color: #fff;
+      }
+      .btn-control:hover:not(:disabled) {
+        background: #555;
+      }
+      .btn-danger {
+        background: var(--error-color);
+        color: white;
+      }
+      .btn-primary {
+        background: var(--base-color);
+        color: white;
+      }
+      .btn-add {
+        background: #4caf50;
+        color: white;
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+      }
+      .btn-add-sub {
+        background: #555;
+        color: #fff;
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        border: 1px dashed #888;
+      }
+      .btn-add-step {
+        background: var(--primary-color);
+        color: #fff;
+        width: 100%;
+        padding: 12px;
+        margin-top: 10px;
+      }
+      .btn-sm:hover:not(:disabled),
+      .btn-add-sub:hover {
+        opacity: 0.8;
+      }
+
+      /* =========================================
+     プレビュー側のフォームデザイン (Vue準拠) 
+     ========================================= */
+      .form-group {
+        margin-bottom: 25px;
+      }
+      .form-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .badge {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 60px;
+        height: 30px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 14px;
+        color: white;
+        font-weight: bold;
+        text-align: center;
+      }
+      .badge.required {
+        background: var(--error-color);
+      }
+      .badge.optional {
+        background: #95a5a6;
+      }
+      .form-label {
+        font-size: 20px;
+        font-weight: bold;
+      }
+      .form-hint {
+        font-size: 14px;
+        color: #777;
+        width: fit-content;
+        margin-top: 4px;
+      }
+
+      /* Fields Layout Control */
+      .fields-container {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+      }
+      .field-wrapper {
+        display: flex;
+        align-items: center;
+        flex: 1 1 0%;
+        position: relative;
+        min-width: 100px;
+      }
+      .fields-container[style*='flex-direction: column'] > .field-wrapper {
+        width: 100%;
+        flex: none;
+      }
+
+      .multi-container {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+      }
+
+      .prefix,
+      .suffix {
+        font-size: 16px;
+        color: #333;
+        white-space: nowrap;
+        margin: 0 10px;
+      }
+
+      /* Input & Textarea */
+      input.form-input,
+      textarea.form-textarea {
+        width: 100%;
+        height: 60px;
+        padding: 12px 14px;
+        border: solid 2px var(--border-color);
+        border-radius: 4px;
+        font-size: 18px;
+        box-sizing: border-box;
+        background-color: #fff;
+        color: var(--text-color);
+        outline: none;
+        transition:
+          background-color 0.2s,
+          border-color 0.2s;
+      }
+      textarea.form-textarea {
+        height: auto;
+        min-height: 60px;
+      }
+      input.form-input::placeholder,
+      textarea.form-textarea::placeholder {
+        color: #acacac;
+      }
+
+      /* Select */
+      select.form-select {
+        width: 100%;
+        min-height: 60px;
+        padding: 0 16px;
+        border: solid 2px var(--border-color);
+        border-radius: 8px;
+        font-size: 18px;
+        box-sizing: border-box;
+        background-color: #fff;
+        color: var(--text-color);
+        outline: none;
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23333'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 16px center;
+        background-size: 24px;
+        transition:
+          background-color 0.2s,
+          border-color 0.2s;
+      }
+
+      /* バリデーション状態 (Valid/Invalid) */
+      input.form-input.is-valid,
+      select.form-select.is-valid,
+      textarea.form-textarea.is-valid {
+        border-color: var(--border-color);
+        background-color: #f1fbff;
+      }
+      input.form-input.is-invalid,
+      select.form-select.is-invalid,
+      textarea.form-textarea.is-invalid {
+        border-color: var(--error-color);
+        background-color: #fff0f0;
+      }
+
+      /* Focus States (!importantでバリデーションカラーより優先して上書き) */
+      input.form-input:focus,
+      select.form-select:focus,
+      textarea.form-textarea:focus {
+        border-color: var(--base-color) !important;
+        background-color: #ffffff !important;
+      }
+
+      /* Checkbox & Radio (EnhancedFieldCheckable) */
+      .check-radio-label {
+        display: flex;
+        align-items: center;
+        padding: 16px;
+        min-height: 60px;
+        border: solid 2px var(--border-color);
+        border-radius: 8px;
+        cursor: pointer;
+        flex: 1 1 0%; /* 横向きのときは均等幅 */
+        min-width: 120px; /* flex-wrap時などの最小幅を確保 */
+        background: white;
+        box-sizing: border-box;
+        transition: all 0.2s ease-in-out;
+        font-size: 18px;
+        color: var(--text-color);
+      }
+      /* 縦向きの時は横幅100%にする */
+      .multi-container[style*='flex-direction: column'] > .check-radio-label {
+        flex: none;
+        width: 100%;
+      }
+
+      .check-radio-label.is-invalid {
+        border-color: var(--error-color);
+        background-color: #fff0f0;
+      }
+      .check-radio-label:has(input:checked) {
+        border-color: var(--base-color);
+        background-color: #f1fbff;
+        box-shadow: 0 0 0 2px var(--base-color);
+      }
+
+      .check-radio-label input {
+        width: 17px;
+        height: 17px;
+        border: 2px solid #becad0;
+        margin-right: 8px;
+        cursor: pointer;
+        appearance: none;
+        position: relative;
+      }
+      .check-radio-label input[type='checkbox'] {
+        border-radius: 3px;
+      }
+      .check-radio-label input[type='checkbox']:checked {
+        background-color: #1e90ff;
+        border: 2px solid transparent;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' d='M3 6.5l2 2 4.5-5'/%3E%3C/svg%3E");
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+      .check-radio-label input[type='radio'] {
+        border-radius: 50%;
+      }
+      .check-radio-label input[type='radio']:checked {
+        border-color: var(--base-color);
+      background: radial-gradient(circle, var(--base-color) 4.5px, transparent 4.5px);
+      }
+      .check-radio-label input.no-mark {
+        appearance: none;
+        width: 0;
+        margin: 0;
+      }
+
+      /* Error message */
+      .error-message {
+        color: var(--error-color);
+        font-size: 12px;
+        margin-top: 5px;
+        display: none;
+      }
+
+      /* Validation Mark (ResultMarkInField) */
+      .validation-mark {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 24px;
+        height: 24px;
+        display: none;
+      }
+      .validation-mark::after {
+        content: '';
+        display: block;
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+      }
+      /* 有効（青いチェックマーク） */
+      .validation-mark.is-valid {
+        display: block;
+      }
+      .validation-mark.is-valid::after {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%233991e2' d='M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z'/%3E%3C/svg%3E");
+      }
+      /* 無効（赤い！マーク） */
+      .validation-mark.is-invalid {
+        display: block;
+      }
+      .validation-mark.is-invalid::after {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23ff7f72' d='M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c13.3 0 24 10.7 24 24V264c0 13.3-10.7 24-24 24s-24-10.7-24-24V152c0-13.3 10.7-24 24-24zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z'/%3E%3C/svg%3E");
+      }
+      input.form-input.has-mark {
+        padding-right: 38px;
+      }
+
+      /* ナビゲーション (LayoutFooterButton) */
+      .form-navigation {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        padding: 24px 16px;
+        background: white;
+        border-top: 1px solid #eee;
+        z-index: 10;
+        position: relative;
+      }
+      .btn {
+        padding: 16px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+        transition: background-color 0.2s;
+        min-width: 160px;
+      }
+      .btn-prev {
+        background: #f0f0f0;
+        color: #555;
+      }
+      .btn-next {
+        background: #d0e4f5;
+        color: white;
+        min-width: 256px;
+      }
+      .btn-next.active {
+        background: var(--primary-color);
+      }
+      .btn-next.active:hover {
+        background: var(--primary-hover-color);
+      }
+
+      /* プログレスバー */
+      .progress-container {
+        background: var(--progress-bg-color);
+        padding: 15px 30px;
+        display: flex;
+        align-items: center;
+        border-top: 1px solid #e0e0e0;
+        transition: background-color 0.3s;
+      }
+      .progress-bar-bg {
+        flex-grow: 1;
+        height: 10px;
+        background: white;
+        border-radius: 5px;
+        border: 1px solid #d0d0d0;
+        overflow: hidden;
+        margin-right: 15px;
+      }
+      .progress-bar-fill {
+        height: 100%;
+        background: var(--primary-color);
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+      .progress-text {
+        font-weight: bold;
+        font-size: 18px;
+        color: var(--text-color);
+      }
+      .progress-text span {
+        color: #888;
+        font-size: 14px;
+        font-weight: normal;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 左側：プレビューエリア -->
+    <div class="preview-pane">
+      <div id="form-container">
+        <div id="form-steps-wrapper"></div>
+        <div class="form-navigation">
+          <button class="btn btn-prev" id="btn-prev" style="display: none">
+            戻る
+          </button>
+          <button class="btn btn-next active" id="btn-next">次へ</button>
+        </div>
+        <div class="progress-container">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-text" id="progress-text">1 <span>/ 1</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右側：エディタエリア -->
+    <div class="editor-pane">
+      <div class="color-settings">
+        <label>
+          <input type="color" id="color-primary" value="#3991e2" /> メイン
+        </label>
+        <label>
+          <input type="color" id="color-primary-hover" value="#1568b9" /> ホバー
+        </label>
+        <label>
+          <input type="color" id="color-progress-bg" value="#f1fbff" />
+          プログレスバー背景
+        </label>
+      </div>
+
+      <div class="editor-tabs">
+        <button class="tab-btn active" onclick="switchTab(event, 'gui')">
+          GUIエディタ
+        </button>
+        <button class="tab-btn" onclick="switchTab(event, 'io')">
+          データ入出力
+        </button>
+      </div>
+
+      <div id="tab-gui" class="tab-content active">
+        <div id="editor-container"></div>
+      </div>
+
+      <div id="tab-io" class="tab-content">
+        <p style="font-size: 12px; color: #aaa; margin-top: 0">
+          オブジェクト配列を貼り付けて「読み込み」を押すか、エディタの状態を「書き出し」できます。
+        </p>
+        <textarea
+          id="io-textarea"
+          placeholder="ここに form-content.js のようなオブジェクトを貼り付けます"
+        ></textarea>
+        <div class="io-actions">
+          <button
+            class="btn-sm btn-primary"
+            style="flex: 1; padding: 12px"
+            onclick="importData()"
+          >
+            オブジェクトを読み込む
+          </button>
+          <button
+            class="btn-sm btn-add"
+            style="flex: 1; margin-top: 0; padding: 12px"
+            onclick="exportData()"
+          >
+            オブジェクトを書き出す
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let formData = [];
+      let currentStepIndex = 0;
+
+      const editorContainer = document.getElementById('editor-container');
+      const formContainer = document.getElementById('form-container');
+
+      // ============== カラー変更機能 ==============
+      document
+        .getElementById('color-primary')
+        .addEventListener('input', function (e) {
+          document.documentElement.style.setProperty(
+            '--primary-color',
+            e.target.value,
+          );
+
+          // SVGのチェックマークの色を動的に変更 (エラーマークは固定赤色)
+          const hex = e.target.value.replace('#', '');
+          let style = document.getElementById('dynamic-color-style');
+          if (!style) {
+            style = document.createElement('style');
+            style.id = 'dynamic-color-style';
+            document.head.appendChild(style);
+          }
+          style.innerHTML = `
+      .validation-mark.is-valid::after {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23${hex}' d='M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z'/%3E%3C/svg%3E");
+      }
+    `;
+        });
+
+      document
+        .getElementById('color-primary-hover')
+        .addEventListener('input', function (e) {
+          document.documentElement.style.setProperty(
+            '--primary-hover-color',
+            e.target.value,
+          );
+        });
+
+      document
+        .getElementById('color-progress-bg')
+        .addEventListener('input', function (e) {
+          document.documentElement.style.setProperty(
+            '--progress-bg-color',
+            e.target.value,
+          );
+        });
+
+      // ============== タブ切り替え ==============
+      function switchTab(e, tabId) {
+        document
+          .querySelectorAll('.tab-btn')
+          .forEach((btn) => btn.classList.remove('active'));
+        document
+          .querySelectorAll('.tab-content')
+          .forEach((content) => content.classList.remove('active'));
+        if (e && e.target) e.target.classList.add('active');
+        document.getElementById('tab-' + tabId).classList.add('active');
+      }
+
+      // ============== データの正規化 (自動整理) ==============
+      function normalizeData() {
+        const stepsMap = {};
+        formData.forEach((item) => {
+          if (!stepsMap[item.step]) stepsMap[item.step] = [];
+          stepsMap[item.step].push(item);
+        });
+
+        const sortedSteps = Object.keys(stepsMap)
+          .map(Number)
+          .sort((a, b) => a - b);
+        let newFormData = [];
+        let newStepNum = 1;
+
+        sortedSteps.forEach((oldStep) => {
+          const items = stepsMap[oldStep].sort(
+            (a, b) => (a.order || 0) - (b.order || 0),
+          );
+          items.forEach((item, index) => {
+            item.step = newStepNum;
+            item.order = index + 1;
+            newFormData.push(item);
+          });
+          newStepNum++;
+        });
+
+        formData = newFormData;
+
+        const totalSteps = [...new Set(formData.map((d) => d.step))].length;
+        if (currentStepIndex >= totalSteps) {
+          currentStepIndex = Math.max(0, totalSteps - 1);
+        }
+      }
+
+      // ============== データ入出力 ==============
+      function importData() {
+        const rawVal = document.getElementById('io-textarea').value.trim();
+        if (!rawVal) {
+          alert('データが入力されていません');
+          return;
+        }
+        try {
+          let data = new Function('return [' + rawVal + ']')();
+          data = Array.isArray(data[0]) ? data[0] : data;
+
+          formData = data.map((item, idx) => ({
+            ...item,
+            id: Date.now().toString() + '_' + idx,
+            step: item.step || 1,
+            order: item.order || idx + 1,
+            field: item.field || [],
+          }));
+
+          currentStepIndex = 0;
+          normalizeData();
+          renderEditor();
+          generateForm();
+          alert('正常に読み込みました。');
+          switchTab({ target: document.querySelector('.tab-btn') }, 'gui');
+        } catch (e) {
+          alert(
+            '読み込みに失敗しました。構文エラーがないか確認してください。\n詳細: ' +
+              e.message,
+          );
+        }
+      }
+
+      function exportData() {
+        normalizeData();
+        if (formData.length === 0) {
+          alert('出力するデータがありません。');
+          return;
+        }
+        const exportData = formData.map((item) => {
+          const { id, ...rest } = item;
+          return rest;
+        });
+
+        exportData.sort((a, b) => {
+          if (a.step !== b.step) return a.step - b.step;
+          return a.order - b.order;
+        });
+
+        let jsonStr = JSON.stringify(exportData, null, 2);
+        let jsObjStr = jsonStr.replace(/"([^"]+)":/g, '$1:');
+        document.getElementById('io-textarea').value = jsObjStr;
+        alert('エディタのデータを書き出しました。');
+      }
+
+      // ============== 右側：エディタの描画 ==============
+      function renderEditor() {
+        editorContainer.innerHTML = '';
+        const stepsData = {};
+        formData.forEach((item) => {
+          if (!stepsData[item.step]) stepsData[item.step] = [];
+          stepsData[item.step].push(item);
+        });
+
+        const stepKeys = Object.keys(stepsData)
+          .map(Number)
+          .sort((a, b) => a - b);
+        const maxStep = stepKeys.length > 0 ? Math.max(...stepKeys) : 0;
+
+        if (stepKeys.length === 0) {
+          editorContainer.innerHTML =
+            '<p style="color:#aaa; text-align:center;">ステップがありません。「新しいステップを追加」を押してください。</p>';
+        }
+
+        const generateStepOptions = (currentStep) => {
+          let optionsHtml = '';
+          const maxAllowed = maxStep + 1;
+          for (let i = 1; i <= maxAllowed; i++) {
+            optionsHtml += `<option value="${i}" ${i === currentStep ? 'selected' : ''}>ステップ ${i}${i === maxAllowed ? ' (新規)' : ''}</option>`;
+          }
+          return optionsHtml;
+        };
+
+        stepKeys.forEach((step, index) => {
+          const stepCard = document.createElement('div');
+          stepCard.className = `step-card ${index === currentStepIndex ? 'active' : ''}`;
+
+          const header = document.createElement('div');
+          header.className = 'step-header';
+          header.onclick = () => {
+            currentStepIndex = index;
+            updateNavigation();
+          };
+
+          header.innerHTML = `
         <div class="step-title-area">
           <span class="accordion-icon">▶</span>
           <span>ステップ ${step}</span>
         </div>
         <button class="btn-sm btn-danger" onclick="event.stopPropagation(); deleteStep(${step})">ステップ削除</button>
       `;
-      stepCard.appendChild(header);
+          stepCard.appendChild(header);
 
-      const body = document.createElement('div');
-      body.className = 'step-body';
+          const body = document.createElement('div');
+          body.className = 'step-body';
 
-      const itemsInStep = stepsData[step].sort((a, b) => a.order - b.order);
-      itemsInStep.forEach((item, itemIndex) => {
-        const qCard = document.createElement('div');
-        qCard.className = 'question-card';
-        
-        const isFirst = itemIndex === 0;
-        const isLast = itemIndex === itemsInStep.length - 1;
+          const itemsInStep = stepsData[step].sort((a, b) => a.order - b.order);
+          itemsInStep.forEach((item, itemIndex) => {
+            const qCard = document.createElement('div');
+            qCard.className = 'question-card';
 
-        let html = `
+            const isFirst = itemIndex === 0;
+            const isLast = itemIndex === itemsInStep.length - 1;
+
+            let html = `
           <div class="order-controls">
             <div>
               <span style="font-size:12px; color:#aaa; margin-right:8px;">表示順: ${item.order}</span>
@@ -434,6 +971,10 @@
               <input type="checkbox" id="req_${item.id}" ${item.isRequired ? 'checked' : ''} onchange="updateData('${item.id}', 'isRequired', this.checked)">
               <label for="req_${item.id}" style="margin:0;">必須にする</label>
             </div>
+            <div class="editor-field editor-field-inline" style="margin-top:15px;">
+              <input type="checkbox" id="wrap_${item.id}" ${item.flexWrap ? 'checked' : ''} onchange="updateData('${item.id}', 'flexWrap', this.checked)">
+              <label for="wrap_${item.id}" style="margin:0;">改行する</label>
+            </div>
             <div class="editor-field">
               <label>入力欄のレイアウト</label>
               <select onchange="updateData('${item.id}', 'flexDirection', this.value)">
@@ -445,15 +986,15 @@
           <hr style="border:none; border-top:1px solid #444; margin:15px 0;">
         `;
 
-        (item.field || []).forEach((f, fIndex) => {
-          const isMulti = ['radio', 'checkbox', 'select'].includes(f.type);
-          const optionsStr = (f.option || []).join(',');
+            (item.field || []).forEach((f, fIndex) => {
+              const isMulti = ['radio', 'checkbox', 'select'].includes(f.type);
+              const optionsStr = (f.option || []).join(',');
 
-          html += `
+              html += `
             <div class="sub-field-card">
               <div class="sub-field-header">
                 <span>入力欄 ${fIndex + 1}</span>
-                ${(item.field.length > 1) ? `<button class="btn-sm btn-danger" style="padding:2px 6px;" onclick="deleteSubField('${item.id}', ${fIndex})">削除</button>` : ''}
+                ${item.field.length > 1 ? `<button class="btn-sm btn-danger" style="padding:2px 6px;" onclick="deleteSubField('${item.id}', ${fIndex})">削除</button>` : ''}
               </div>
               
               <div class="editor-field">
@@ -467,12 +1008,16 @@
                 </select>
               </div>
 
-              ${!isMulti ? `
+              ${
+                !isMulti
+                  ? `
               <div class="editor-field">
                 <label>プレースホルダー</label>
                 <input type="text" value="${f.placeholder || ''}" oninput="updateSubField('${item.id}', ${fIndex}, 'placeholder', this.value)" placeholder="例：山田 太郎">
               </div>
-              ` : ''}
+              `
+                  : ''
+              }
 
               <div class="editor-flex-row">
                 <div class="editor-field">
@@ -485,407 +1030,693 @@
                 </div>
               </div>
 
-              ${isMulti ? `
+              ${
+                isMulti
+                  ? `
               <div class="editor-field">
                 <label>選択肢 (カンマ区切り)</label>
                 <input type="text" value="${optionsStr}" oninput="updateSubFieldOptions('${item.id}', ${fIndex}, this.value)" placeholder="例：東京,大阪,福岡">
               </div>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
           `;
-        });
+            });
 
-        html += `
+            html += `
           <button class="btn-sm btn-add-sub" onclick="addSubField('${item.id}')">＋ この質問に入力欄を追加</button>
           <div style="text-align: right; margin-top: 15px;">
             <button class="btn-sm btn-danger" onclick="deleteQuestion('${item.id}')">この質問ごと削除</button>
           </div>
         `;
-        
-        qCard.innerHTML = html;
-        body.appendChild(qCard);
+
+            qCard.innerHTML = html;
+            body.appendChild(qCard);
+          });
+
+          const addQBtn = document.createElement('button');
+          addQBtn.className = 'btn-sm btn-add';
+          addQBtn.innerText = '+ このステップに質問を追加';
+          addQBtn.onclick = () => addQuestion(step);
+          body.appendChild(addQBtn);
+
+          stepCard.appendChild(body);
+          editorContainer.appendChild(stepCard);
+        });
+
+        const addStepBtn = document.createElement('button');
+        addStepBtn.className = 'btn-sm btn-add-step';
+        addStepBtn.innerText = '+ 新しいステップを追加';
+        addStepBtn.onclick = () => addQuestion(maxStep + 1);
+        editorContainer.appendChild(addStepBtn);
+      }
+
+      // ============== 順番・ステップの移動処理 ==============
+      function moveOrder(id, direction) {
+        const itemIndex = formData.findIndex((d) => d.id === id);
+        if (itemIndex === -1) return;
+
+        const item = formData[itemIndex];
+        const stepItems = formData
+          .filter((d) => d.step === item.step)
+          .sort((a, b) => a.order - b.order);
+        const currentIdx = stepItems.findIndex((d) => d.id === id);
+
+        if (direction === -1 && currentIdx > 0) {
+          const prevItem = stepItems[currentIdx - 1];
+          const temp = item.order;
+          item.order = prevItem.order;
+          prevItem.order = temp;
+        } else if (direction === 1 && currentIdx < stepItems.length - 1) {
+          const nextItem = stepItems[currentIdx + 1];
+          const temp = item.order;
+          item.order = nextItem.order;
+          nextItem.order = temp;
+        }
+
+        normalizeData();
+        renderEditor();
+        generateForm();
+      }
+
+      function changeStep(id, newStepStr) {
+        const item = formData.find((d) => d.id === id);
+        if (item) {
+          const targetStep = parseInt(newStepStr, 10);
+          item.step = targetStep;
+
+          const targetStepItems = formData.filter((d) => d.step === targetStep);
+          const maxOrder =
+            targetStepItems.length > 0
+              ? Math.max(...targetStepItems.map((d) => d.order || 0))
+              : 0;
+          item.order = maxOrder + 1;
+
+          normalizeData();
+          renderEditor();
+          generateForm();
+        }
+      }
+
+      // ============== データ操作関数 ==============
+      function updateData(id, key, value) {
+        const item = formData.find((d) => d.id === id);
+        if (item) {
+          item[key] = value;
+          generateForm();
+        }
+      }
+
+      function updateSubField(qId, fIndex, key, value) {
+        const item = formData.find((d) => d.id === qId);
+        if (item && item.field[fIndex]) {
+          item.field[fIndex][key] = value;
+          if (
+            key === 'type' &&
+            ['radio', 'checkbox', 'select'].includes(value) &&
+            !item.field[fIndex].option
+          ) {
+            item.field[fIndex].option = ['選択肢1', '選択肢2'];
+          }
+          if (key === 'type') renderEditor();
+          generateForm();
+        }
+      }
+
+      function updateSubFieldOptions(qId, fIndex, value) {
+        const item = formData.find((d) => d.id === qId);
+        if (item && item.field[fIndex]) {
+          item.field[fIndex].option = value
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s);
+          generateForm();
+        }
+      }
+
+      function addSubField(qId) {
+        const item = formData.find((d) => d.id === qId);
+        if (item) {
+          if (!item.field) item.field = [];
+          item.field.push({
+            name: 'field_' + Date.now(),
+            type: 'text',
+            hasMark: true,
+          });
+          renderEditor();
+          generateForm();
+        }
+      }
+
+      function deleteSubField(qId, fIndex) {
+        const item = formData.find((d) => d.id === qId);
+        if (item && item.field) {
+          item.field.splice(fIndex, 1);
+          renderEditor();
+          generateForm();
+        }
+      }
+
+      function addQuestion(stepNum) {
+        const stepItems = formData.filter((d) => d.step === stepNum);
+        const maxOrder =
+          stepItems.length > 0
+            ? Math.max(...stepItems.map((d) => d.order || 0))
+            : 0;
+        formData.push({
+          id: Date.now().toString(),
+          step: stepNum,
+          order: maxOrder + 1,
+          label: '新しい質問',
+          hint: '',
+          isRequired: true,
+          flexDirection: 'row',
+          flexWrap: false,
+          field: [{ name: 'field_' + Date.now(), type: 'text', hasMark: true }],
+        });
+        normalizeData();
+        renderEditor();
+        generateForm();
+      }
+
+      function deleteQuestion(id) {
+        formData = formData.filter((d) => d.id !== id);
+        normalizeData();
+        renderEditor();
+        generateForm();
+      }
+
+      function deleteStep(stepNum) {
+        formData = formData.filter((d) => d.step !== stepNum);
+        normalizeData();
+        renderEditor();
+        generateForm();
+      }
+
+      // ============== 左側：プレビューの描画 ==============
+
+      // バリデーション実行関数
+      function validateField(qData, groupEl, name, isInputEvent = false) {
+        if (!name) return;
+        const inputs = groupEl.querySelectorAll(`[name="${name}"]`);
+        if (inputs.length === 0) return;
+
+        const isRequired = qData.isRequired;
+        let hasValue = false;
+
+        // ラジオ・チェックボックスの判定
+        if (inputs[0].type === 'radio' || inputs[0].type === 'checkbox') {
+          hasValue =
+            groupEl.querySelectorAll(`[name="${name}"]:checked`).length > 0;
+          inputs.forEach((chk) => {
+            const label = chk.closest('.check-radio-label');
+            if (!label) return;
+            label.classList.remove('is-valid', 'is-invalid');
+
+            if (isRequired && !hasValue && !isInputEvent) {
+              label.classList.add('is-invalid');
+            }
+          });
+        }
+        // テキスト・セレクト・テキストエリアの判定
+        else {
+          inputs.forEach((inputEl) => {
+            hasValue = inputEl.value.trim() !== '';
+            const wrapper = inputEl.closest('.field-wrapper');
+            const mark = wrapper
+              ? wrapper.querySelector('.validation-mark')
+              : null;
+
+            inputEl.classList.remove('is-valid', 'is-invalid');
+            if (mark) mark.classList.remove('is-valid', 'is-invalid');
+
+            if (hasValue) {
+              inputEl.classList.add('is-valid');
+              if (mark) mark.classList.add('is-valid');
+            } else if (isRequired && !isInputEvent) {
+              // 必須かつ値なし ＆ 入力中（inputイベント）でなければエラーにする
+              inputEl.classList.add('is-invalid');
+              if (mark) mark.classList.add('is-invalid');
+            }
+          });
+        }
+
+        // エラーメッセージの表示切替
+        const errorEl = groupEl.querySelector('.error-message');
+        if (errorEl) {
+          if (!isInputEvent) {
+            // blurなどの確定時はエラーメッセージ表示を制御
+            errorEl.style.display = isRequired && !hasValue ? 'block' : 'none';
+          } else if (hasValue) {
+            // 入力中（input時）に値が入ったら即座にエラーメッセージを消す
+            errorEl.style.display = 'none';
+          }
+        }
+      }
+
+      function generateForm() {
+        if (formData.length === 0) {
+          formContainer.style.display = 'none';
+          return;
+        }
+
+        const wrapper = document.getElementById('form-steps-wrapper');
+        wrapper.innerHTML = '';
+        const stepsData = {};
+        formData.forEach((item) => {
+          if (!stepsData[item.step]) stepsData[item.step] = [];
+          stepsData[item.step].push(item);
+        });
+
+        const stepKeys = Object.keys(stepsData)
+          .map(Number)
+          .sort((a, b) => a - b);
+
+        stepKeys.forEach((stepKey, index) => {
+          const stepDiv = document.createElement('div');
+          stepDiv.className = `step-content`;
+
+          stepsData[stepKey]
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+            .forEach((q) => {
+              const group = document.createElement('div');
+              group.className = 'form-group';
+
+              const header = document.createElement('div');
+              header.className = 'form-header';
+
+              const badge = document.createElement('span');
+              badge.className = `badge ${q.isRequired ? 'required' : 'optional'}`;
+              badge.innerText = q.isRequired ? '必須' : '任意';
+              header.appendChild(badge);
+
+              const label = document.createElement('span');
+              label.className = 'form-label';
+              label.innerText = q.label || '';
+              header.appendChild(label);
+
+              if (q.hint) {
+                const hint = document.createElement('div');
+                hint.className = 'form-hint';
+                hint.innerText = q.hint;
+                header.appendChild(hint);
+              }
+              group.appendChild(header);
+
+              const fieldsCont = document.createElement('div');
+              fieldsCont.className = 'fields-container';
+              fieldsCont.style.display = 'flex';
+              fieldsCont.style.gap = '10px';
+              fieldsCont.style.width = '100%';
+              fieldsCont.style.flexDirection =
+                q.flexDirection === 'column' ? 'column' : 'row';
+              fieldsCont.style.flexWrap = q.flexWrap ? 'wrap' : 'nowrap';
+
+              (q.field || []).forEach((f) => {
+                const wrapperEl = document.createElement('div');
+                wrapperEl.className = 'field-wrapper';
+
+                if (f.prefix) {
+                  const pre = document.createElement('span');
+                  pre.className = 'prefix';
+                  pre.innerText = f.prefix;
+                  wrapperEl.appendChild(pre);
+                }
+
+                let inputEl;
+                if (f.type === 'textarea') {
+                  inputEl = document.createElement('textarea');
+                  inputEl.className = 'form-textarea';
+                  inputEl.name = f.name || '';
+                  if (f.placeholder) inputEl.placeholder = f.placeholder;
+                  inputEl.rows = 3;
+                } else if (f.type === 'select') {
+                  inputEl = document.createElement('select');
+                  inputEl.className = 'form-select';
+                  inputEl.name = f.name || '';
+                  const defaultOpt = document.createElement('option');
+                  defaultOpt.innerText = '選択してください';
+                  defaultOpt.value = '';
+                  inputEl.appendChild(defaultOpt);
+                  (f.option || []).forEach((optVal) => {
+                    const opt = document.createElement('option');
+                    opt.value = optVal;
+                    opt.innerText = optVal;
+                    inputEl.appendChild(opt);
+                  });
+                } else if (f.type === 'radio' || f.type === 'checkbox') {
+                  const multiCont = document.createElement('div');
+                  multiCont.className = 'multi-container';
+                  multiCont.style.display = 'flex';
+                  multiCont.style.gap = '10px';
+                  multiCont.style.width = '100%';
+                  multiCont.style.flexDirection =
+                    q.flexDirection === 'column' ? 'column' : 'row';
+                  multiCont.style.flexWrap = q.flexWrap ? 'wrap' : 'nowrap';
+
+                  (f.option || []).forEach((optVal) => {
+                    const lbl = document.createElement('label');
+                    lbl.className = 'check-radio-label';
+                    const chk = document.createElement('input');
+                    chk.type = f.type;
+                    chk.name = f.name || '';
+                    chk.value = optVal;
+                    if (f.hasMark === false) chk.classList.add('no-mark');
+                    lbl.appendChild(chk);
+                    lbl.append(optVal);
+                    multiCont.appendChild(lbl);
+
+                    chk.addEventListener('blur', () =>
+                      validateField(q, group, f.name),
+                    );
+                    chk.addEventListener('change', () =>
+                      validateField(q, group, f.name),
+                    );
+                  });
+                  wrapperEl.appendChild(multiCont);
+                } else {
+                  inputEl = document.createElement('input');
+                  inputEl.className = 'form-input';
+                  inputEl.type = f.type || 'text';
+                  inputEl.name = f.name || '';
+                  if (f.placeholder) inputEl.placeholder = f.placeholder;
+
+                  if (f.hasMark) {
+                    inputEl.classList.add('has-mark');
+                    const mark = document.createElement('span');
+                    mark.className = 'validation-mark';
+                    wrapperEl.appendChild(mark);
+                  }
+                }
+
+                if (inputEl && f.type !== 'radio' && f.type !== 'checkbox') {
+                  // mark要素が存在していればその前に配置
+                  const mark = wrapperEl.querySelector('.validation-mark');
+                  if (mark) {
+                    wrapperEl.insertBefore(inputEl, mark);
+                  } else {
+                    wrapperEl.appendChild(inputEl);
+                  }
+
+                  // バリデーションイベントの登録
+                  inputEl.addEventListener('blur', () =>
+                    validateField(q, group, f.name),
+                  );
+                  inputEl.addEventListener('input', () =>
+                    validateField(q, group, f.name, true),
+                  );
+                  inputEl.addEventListener('change', () =>
+                    validateField(q, group, f.name),
+                  );
+                }
+
+                if (f.suffix) {
+                  const suf = document.createElement('span');
+                  suf.className = 'suffix';
+                  suf.innerText = f.suffix;
+                  wrapperEl.appendChild(suf);
+                }
+
+                fieldsCont.appendChild(wrapperEl);
+              });
+
+              group.appendChild(fieldsCont);
+
+              const errorMsgText =
+                q.errorMessag || q.errorMessage || '必須項目です。';
+              const errorDiv = document.createElement('div');
+              errorDiv.className = 'error-message';
+              errorDiv.innerText = errorMsgText;
+              group.appendChild(errorDiv);
+
+              stepDiv.appendChild(group);
+            });
+          wrapper.appendChild(stepDiv);
+        });
+
+        formContainer.style.display = 'block';
+
+        setTimeout(() => {
+          updateNavigation(stepKeys.length);
+        }, 0);
+      }
+
+      // ▼▼ ナビゲーションおよびアコーディオンの同期更新 ▼▼
+      function updateNavigation(totalSteps) {
+        if (!totalSteps) {
+          totalSteps = document.querySelectorAll('.step-content').length;
+        }
+
+        const wrapper = document.getElementById('form-steps-wrapper');
+        const steps = document.querySelectorAll('.step-content');
+
+        wrapper.style.transform = `translateX(-${currentStepIndex * 100}%)`;
+
+        const activeStep = steps[currentStepIndex];
+        if (activeStep) {
+          wrapper.style.height = activeStep.offsetHeight + 'px';
+        }
+
+        document.getElementById('btn-prev').style.display =
+          currentStepIndex === 0 ? 'none' : 'block';
+        document.getElementById('btn-next').innerText =
+          currentStepIndex === totalSteps - 1 ? '確認画面へ進む' : '次へ';
+
+        const displayStep = currentStepIndex + 1;
+        document.getElementById('progress-fill').style.width =
+          `${(displayStep / totalSteps) * 100}%`;
+        document.getElementById('progress-text').innerHTML =
+          `${displayStep} <span>/ ${totalSteps}</span>`;
+
+        document.querySelectorAll('.step-card').forEach((card, idx) => {
+          if (idx === currentStepIndex) {
+            card.classList.add('active');
+          } else {
+            card.classList.remove('active');
+          }
+        });
+      }
+
+      document.getElementById('btn-prev').addEventListener('click', () => {
+        if (currentStepIndex > 0) {
+          currentStepIndex--;
+          updateNavigation();
+        }
       });
 
-      const addQBtn = document.createElement('button');
-      addQBtn.className = 'btn-sm btn-add';
-      addQBtn.innerText = '+ このステップに質問を追加';
-      addQBtn.onclick = () => addQuestion(step);
-      body.appendChild(addQBtn);
+      document.getElementById('btn-next').addEventListener('click', () => {
+        const totalSteps = document.querySelectorAll('.step-content').length;
+        if (currentStepIndex < totalSteps - 1) {
+          currentStepIndex++;
+          updateNavigation();
+        } else {
+          alert('確認画面へ遷移します。(モックのためここで終了)');
+        }
+      });
 
-      stepCard.appendChild(body);
-      editorContainer.appendChild(stepCard);
-    });
+      // 初回起動用のデータ
+      const initialRawData = [
+        {
+          step: 1,
+          order: 1,
+          label: '名前（漢字）',
+          hint: '名前（フリガナ）に自動入力されます。',
+          errorMessag: 'サンプルのエラーメッセージです。',
+          isRequired: true,
+          flexDirection: 'row',
+          flexWrap: false,
+          field: [
+            {
+              name: 'field_1',
+              hasMark: true,
+              type: 'text',
+              placeholder: '田中',
+              optionValueType: 'furigana',
+              furiganaName: 'field_3',
+              prefix: '姓：',
+            },
+            {
+              name: 'field_2',
+              hasMark: true,
+              type: 'text',
+              placeholder: '太郎',
+              optionValueType: 'furigana',
+              furiganaName: 'field_4',
+              prefix: '名：',
+            },
+          ],
+        },
+        {
+          step: 1,
+          order: 2,
+          flexDirection: 'row',
+          flexWrap: false,
+          label: '名前（フリガナ）',
+          errorMessag: 'サンプルのエラーメッセージです。',
+          isRequired: true,
+          field: [
+            {
+              name: 'field_3',
+              hasMark: true,
+              type: 'text',
+              placeholder: 'タナカ',
+              optionValueType: 'furigana',
+              furiganaName: '',
+              prefix: 'セイ：',
+            },
+            {
+              name: 'field_4',
+              hasMark: true,
+              type: 'text',
+              placeholder: 'タロウ',
+              optionValueType: 'furigana',
+              furiganaName: '',
+              prefix: 'メイ：',
+            },
+          ],
+        },
+        {
+          step: 2,
+          order: 1,
+          label: '宿泊人数（大人）',
+          errorMessag: 'サンプルのエラーメッセージです。',
+          isRequired: true,
+          field: [
+            {
+              name: 'field_5',
+              type: 'select',
+              option: ['1人', '2人', '3人', '4人', '4人以上'],
+            },
+          ],
+        },
+        {
+          step: 4,
+          order: 1,
+          label: '想定の旅費',
+          hint: ',（カンマ）を入れないでください。',
+          errorMessag: 'サンプルのエラーメッセージです。',
+          isRequired: true,
+          field: [
+            {
+              name: 'field_6',
+              hasMark: true,
+              type: 'text',
+              placeholder: '入力例',
+              optionValueType: 'justHalfSizeNumber',
+              prefix: '税込',
+              suffix: '円',
+            },
+          ],
+        },
+        {
+          step: 2,
+          order: 2,
+          label: '宿泊人数（子供）',
+          errorMessag: 'サンプルのエラーメッセージです。',
+          isRequired: true,
+          field: [
+            {
+              name: 'field_7',
+              type: 'select',
+              option: ['0人', '1人', '2人', '3人', '4人', '4人以上'],
+            },
+          ],
+        },
+        {
+          step: 2,
+          order: 3,
+          label: '展望タイプ',
+          errorMessag: 'サンプルのエラーメッセージです。',
+          isRequired: true,
+          flexDirection: 'row',
+          flexWrap: false,
+          field: [
+            {
+              name: 'field_8',
+              type: 'radio',
+              option: ['海側', '山側', '希望なし'],
+            },
+          ],
+        },
+        {
+          step: 2,
+          order: 4,
+          label: '客室タイプ',
+          errorMessag: 'サンプルのエラーメッセージです。',
+          isRequired: true,
+          flexDirection: 'row',
+          flexWrap: false,
+          field: [
+            {
+              name: 'field_9',
+              type: 'radio',
+              option: ['洋室', '和室', '和洋室'],
+            },
+          ],
+        },
+        {
+          step: 3,
+          order: 1,
+          label: '移動手段',
+          hint: '複数選択可',
+          errorMessag: 'サンプルのエラーメッセージです。',
+          isRequired: true,
+          flexDirection: 'row',
+          flexWrap: true,
+          field: [
+            {
+              name: 'field_10',
+              type: 'checkbox',
+              option: ['自家用車', 'バス', '電車', '新幹線', '飛行機'],
+            },
+          ],
+        },
+        {
+          step: 3,
+          order: 2,
+          label: '知ったきっかけ',
+          hint: '複数選択可',
+          isRequired: false,
+          flexDirection: 'column',
+          flexWrap: false,
+          field: [
+            {
+              name: 'field_11',
+              hasMark: true,
+              type: 'checkbox',
+              option: [
+                'SNS',
+                '新聞紙',
+                'webサイト',
+                '知人/友人からの紹介',
+                'その他',
+              ],
+            },
+          ],
+        },
+        {
+          step: 4,
+          order: 2,
+          label: '気になる点があれば記載ください。',
+          isRequired: false,
+          field: [
+            {
+              name: 'field_12',
+              type: 'textarea',
+            },
+          ],
+        },
+      ];
 
-    const addStepBtn = document.createElement('button');
-    addStepBtn.className = 'btn-sm btn-add-step';
-    addStepBtn.innerText = '+ 新しいステップを追加';
-    addStepBtn.onclick = () => addQuestion(maxStep + 1);
-    editorContainer.appendChild(addStepBtn);
-  }
-
-  // ============== 順番・ステップの移動処理 ==============
-  function moveOrder(id, direction) {
-    const itemIndex = formData.findIndex(d => d.id === id);
-    if (itemIndex === -1) return;
-    
-    const item = formData[itemIndex];
-    const stepItems = formData.filter(d => d.step === item.step).sort((a, b) => a.order - b.order);
-    const currentIdx = stepItems.findIndex(d => d.id === id);
-
-    if (direction === -1 && currentIdx > 0) {
-      const prevItem = stepItems[currentIdx - 1];
-      const temp = item.order;
-      item.order = prevItem.order;
-      prevItem.order = temp;
-    } else if (direction === 1 && currentIdx < stepItems.length - 1) {
-      const nextItem = stepItems[currentIdx + 1];
-      const temp = item.order;
-      item.order = nextItem.order;
-      nextItem.order = temp;
-    }
-
-    normalizeData();
-    renderEditor();
-    generateForm();
-  }
-
-  function changeStep(id, newStepStr) {
-    const item = formData.find(d => d.id === id);
-    if (item) {
-      const targetStep = parseInt(newStepStr, 10);
-      item.step = targetStep;
-      
-      const targetStepItems = formData.filter(d => d.step === targetStep);
-      const maxOrder = targetStepItems.length > 0 ? Math.max(...targetStepItems.map(d => d.order || 0)) : 0;
-      item.order = maxOrder + 1;
+      formData = initialRawData.map((item, idx) => ({
+        ...item,
+        id: 'init_' + idx,
+      }));
 
       normalizeData();
       renderEditor();
       generateForm();
-    }
-  }
-
-  // ============== データ操作関数 ==============
-  function updateData(id, key, value) {
-    const item = formData.find(d => d.id === id);
-    if (item) { item[key] = value; generateForm(); }
-  }
-
-  function updateSubField(qId, fIndex, key, value) {
-    const item = formData.find(d => d.id === qId);
-    if (item && item.field[fIndex]) {
-      item.field[fIndex][key] = value;
-      if (key === 'type' && ['radio', 'checkbox', 'select'].includes(value) && !item.field[fIndex].option) {
-        item.field[fIndex].option = ['選択肢1', '選択肢2'];
-      }
-      if (key === 'type') renderEditor();
-      generateForm();
-    }
-  }
-
-  function updateSubFieldOptions(qId, fIndex, value) {
-    const item = formData.find(d => d.id === qId);
-    if (item && item.field[fIndex]) {
-      item.field[fIndex].option = value.split(',').map(s => s.trim()).filter(s => s);
-      generateForm();
-    }
-  }
-
-  function addSubField(qId) {
-    const item = formData.find(d => d.id === qId);
-    if (item) {
-      if(!item.field) item.field = [];
-      item.field.push({ name: 'field_' + Date.now(), type: 'text', hasMark: true });
-      renderEditor();
-      generateForm();
-    }
-  }
-
-  function deleteSubField(qId, fIndex) {
-    const item = formData.find(d => d.id === qId);
-    if (item && item.field) {
-      item.field.splice(fIndex, 1);
-      renderEditor();
-      generateForm();
-    }
-  }
-
-  function addQuestion(stepNum) {
-    const stepItems = formData.filter(d => d.step === stepNum);
-    const maxOrder = stepItems.length > 0 ? Math.max(...stepItems.map(d => d.order || 0)) : 0;
-    formData.push({
-      id: Date.now().toString(),
-      step: stepNum,
-      order: maxOrder + 1,
-      label: '新しい質問',
-      hint: '',
-      isRequired: true,
-      flexDirection: 'row',
-      field: [{ name: 'field_' + Date.now(), type: 'text', hasMark: true }]
-    });
-    normalizeData();
-    renderEditor();
-    generateForm();
-  }
-
-  function deleteQuestion(id) {
-    formData = formData.filter(d => d.id !== id);
-    normalizeData();
-    renderEditor();
-    generateForm();
-  }
-
-  function deleteStep(stepNum) {
-    formData = formData.filter(d => d.step !== stepNum);
-    normalizeData();
-    renderEditor();
-    generateForm();
-  }
-
-  // ============== 左側：プレビューの描画 ==============
-  function generateForm() {
-    if (formData.length === 0) {
-      formContainer.style.display = 'none';
-      return;
-    }
-
-    const wrapper = document.getElementById('form-steps-wrapper');
-    wrapper.innerHTML = '';
-    const stepsData = {};
-    formData.forEach(item => {
-      if (!stepsData[item.step]) stepsData[item.step] = [];
-      stepsData[item.step].push(item);
-    });
-
-    const stepKeys = Object.keys(stepsData).map(Number).sort((a, b) => a - b);
-    
-    stepKeys.forEach((stepKey, index) => {
-      const stepDiv = document.createElement('div');
-      stepDiv.className = `step-content`; 
-      
-      stepsData[stepKey].sort((a, b) => (a.order || 0) - (b.order || 0)).forEach(q => {
-        const group = document.createElement('div');
-        group.className = 'form-group';
-
-        const header = document.createElement('div');
-        header.className = 'form-header';
-        
-        const badge = document.createElement('span');
-        badge.className = `badge ${q.isRequired ? 'required' : 'optional'}`;
-        badge.innerText = q.isRequired ? '必須' : '任意';
-        header.appendChild(badge);
-
-        const label = document.createElement('span');
-        label.className = 'form-label';
-        label.innerText = q.label || '';
-        header.appendChild(label);
-
-        if (q.hint) {
-          const hint = document.createElement('span');
-          hint.className = 'form-hint';
-          hint.innerText = q.hint;
-          header.appendChild(hint);
-        }
-        group.appendChild(header);
-
-        const fieldsCont = document.createElement('div');
-        fieldsCont.className = 'fields-container';
-        fieldsCont.style.flexDirection = q.flexDirection || 'row';
-        fieldsCont.style.flexWrap = q.flexWrap ? 'wrap' : 'nowrap';
-
-        (q.field || []).forEach(f => {
-          const wrapperEl = document.createElement('div');
-          wrapperEl.className = 'field-wrapper';
-          if (q.flexDirection === 'column') wrapperEl.classList.add('col');
-
-          if (f.prefix) {
-            const pre = document.createElement('span');
-            pre.className = 'prefix';
-            pre.innerText = f.prefix;
-            wrapperEl.appendChild(pre);
-          }
-
-          let inputEl;
-          if (f.type === 'textarea') {
-            inputEl = document.createElement('textarea');
-            inputEl.className = 'form-textarea';
-            inputEl.name = f.name || '';
-            if(f.placeholder) inputEl.placeholder = f.placeholder;
-            inputEl.rows = 3;
-          } else if (f.type === 'select') {
-            inputEl = document.createElement('select');
-            inputEl.className = 'form-select';
-            inputEl.name = f.name || '';
-            const defaultOpt = document.createElement('option');
-            defaultOpt.innerText = '選択してください';
-            defaultOpt.value = '';
-            inputEl.appendChild(defaultOpt);
-            (f.option || []).forEach(optVal => {
-              const opt = document.createElement('option');
-              opt.value = optVal;
-              opt.innerText = optVal;
-              inputEl.appendChild(opt);
-            });
-          } else if (f.type === 'radio' || f.type === 'checkbox') {
-            const multiCont = document.createElement('div');
-            multiCont.style.display = 'flex';
-            multiCont.style.gap = '10px';
-            multiCont.style.flexWrap = 'wrap';
-            
-            (f.option || []).forEach(optVal => {
-              const lbl = document.createElement('label');
-              lbl.className = 'check-radio-label';
-              const chk = document.createElement('input');
-              chk.type = f.type;
-              chk.name = f.name || '';
-              chk.value = optVal;
-              if (f.hasMark === false) chk.classList.add('no-mark');
-              lbl.appendChild(chk);
-              lbl.append(optVal);
-              multiCont.appendChild(lbl);
-              
-              chk.addEventListener('blur', () => handleBlur(q, group, f.name));
-              chk.addEventListener('change', () => handleBlur(q, group, f.name));
-            });
-            wrapperEl.appendChild(multiCont);
-          } else {
-            inputEl = document.createElement('input');
-            inputEl.className = 'form-input';
-            inputEl.type = f.type || 'text';
-            inputEl.name = f.name || '';
-            if(f.placeholder) inputEl.placeholder = f.placeholder;
-
-            if (f.hasMark) {
-              const mark = document.createElement('span');
-              mark.className = 'validation-mark';
-              mark.innerHTML = '✔';
-              wrapperEl.appendChild(mark);
-              inputEl.addEventListener('input', e => mark.style.display = e.target.value.trim() !== '' ? 'block' : 'none');
-            }
-          }
-
-          if (inputEl && (f.type !== 'radio' && f.type !== 'checkbox')) {
-             wrapperEl.insertBefore(inputEl, wrapperEl.querySelector('.validation-mark') || wrapperEl.firstChild);
-             inputEl.addEventListener('blur', () => handleBlur(q, group, f.name));
-          }
-
-          if (f.suffix) {
-            const suf = document.createElement('span');
-            suf.className = 'suffix';
-            suf.innerText = f.suffix;
-            wrapperEl.appendChild(suf);
-          }
-
-          fieldsCont.appendChild(wrapperEl);
-        });
-
-        group.appendChild(fieldsCont);
-
-        const errorMsgText = q.errorMessag || q.errorMessage || '必須項目です。';
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message';
-        errorDiv.innerText = errorMsgText;
-        group.appendChild(errorDiv);
-
-        stepDiv.appendChild(group);
-      });
-      wrapper.appendChild(stepDiv);
-    });
-
-    formContainer.style.display = 'block';
-    
-    setTimeout(() => {
-      updateNavigation(stepKeys.length);
-    }, 0);
-  }
-
-  function handleBlur(qData, groupEl, name) {
-    if (!qData.isRequired || !name) return;
-    const errorEl = groupEl.querySelector('.error-message');
-    const inputs = groupEl.querySelectorAll(`[name="${name}"]`);
-    if(inputs.length === 0) return;
-
-    let hasValue = false;
-    if (inputs[0].type === 'radio' || inputs[0].type === 'checkbox') {
-      hasValue = groupEl.querySelectorAll(`[name="${name}"]:checked`).length > 0;
-    } else {
-      hasValue = inputs[0].value.trim() !== '';
-    }
-    errorEl.style.display = hasValue ? 'none' : 'block';
-  }
-
-  // ▼▼ ナビゲーションおよびアコーディオンの同期更新 ▼▼
-  function updateNavigation(totalSteps) {
-    if (!totalSteps) {
-      totalSteps = document.querySelectorAll('.step-content').length;
-    }
-    
-    const wrapper = document.getElementById('form-steps-wrapper');
-    const steps = document.querySelectorAll('.step-content');
-    
-    wrapper.style.transform = `translateX(-${currentStepIndex * 100}%)`;
-
-    const activeStep = steps[currentStepIndex];
-    if (activeStep) {
-      wrapper.style.height = activeStep.offsetHeight + 'px';
-    }
-
-    document.getElementById('btn-prev').style.display = currentStepIndex === 0 ? 'none' : 'block';
-    document.getElementById('btn-next').innerText = currentStepIndex === totalSteps - 1 ? '確認画面へ進む' : '次へ';
-    
-    const displayStep = currentStepIndex + 1;
-    document.getElementById('progress-fill').style.width = `${(displayStep / totalSteps) * 100}%`;
-    document.getElementById('progress-text').innerHTML = `${displayStep} <span>/ ${totalSteps}</span>`;
-
-    document.querySelectorAll('.step-card').forEach((card, idx) => {
-      if (idx === currentStepIndex) {
-        card.classList.add('active');
-      } else {
-        card.classList.remove('active');
-      }
-    });
-  }
-
-  document.getElementById('btn-prev').addEventListener('click', () => {
-    if (currentStepIndex > 0) { 
-      currentStepIndex--; 
-      updateNavigation(); 
-    }
-  });
-
-  document.getElementById('btn-next').addEventListener('click', () => {
-    const totalSteps = document.querySelectorAll('.step-content').length;
-    if (currentStepIndex < totalSteps - 1) {
-      currentStepIndex++; 
-      updateNavigation(); 
-    } else {
-      alert('確認画面へ遷移します。(モックのためここで終了)');
-    }
-  });
-
-  // 初回起動用のデータ
-  const initialRawData = [
-    { step: 1, order: 1, label: '名前（漢字）', hint: '名前（フリガナ）に自動入力されます。', errorMessag: 'サンプルのエラーメッセージです。', isRequired: true, flexDirection: 'row', flexWrap: false, field: [{ name: 'field_1', hasMark: true, type: 'text', placeholder: '田中', optionValueType: 'furigana', furiganaName: 'field_3', prefix: '姓：' }, { name: 'field_2', hasMark: true, type: 'text', placeholder: '太郎', optionValueType: 'furigana', furiganaName: 'field_4', prefix: '名：' }] },
-    { step: 1, order: 2, flexDirection: 'row', flexWrap: false, label: '名前（フリガナ）', errorMessag: 'サンプルのエラーメッセージです。', isRequired: true, field: [{ name: 'field_3', hasMark: true, type: 'text', placeholder: 'タナカ', optionValueType: 'furigana', furiganaName: '', prefix: 'セイ：' }, { name: 'field_4', hasMark: true, type: 'text', placeholder: 'タロウ', optionValueType: 'furigana', furiganaName: '', prefix: 'メイ：' }] },
-    { step: 2, order: 1, label: '宿泊人数（大人）', errorMessag: 'サンプルのエラーメッセージです。', isRequired: true, field: [{ name: 'field_5', type: 'select', option: ['1人', '2人', '3人', '4人', '4人以上'] }] },
-    { step: 4, order: 1, label: '想定の旅費', hint: ',（カンマ）を入れないでください。', errorMessag: 'サンプルのエラーメッセージです。', isRequired: true, field: [{ name: 'field_6', hasMark: true, type: 'text', placeholder: '入力例', optionValueType: 'justHalfSizeNumber', prefix: '税込', suffix: '円' }] },
-    { step: 2, order: 2, label: '宿泊人数（子供）', errorMessag: 'サンプルのエラーメッセージです。', isRequired: true, field: [{ name: 'field_7', type: 'select', option: ['0人', '1人', '2人', '3人', '4人', '4人以上'] }] },
-    { step: 2, order: 3, label: '展望タイプ', errorMessag: 'サンプルのエラーメッセージです。', isRequired: true, flexDirection: 'row', flexWrap: false, field: [{ name: 'field_8', type: 'radio', option: ['海側', '山側', '希望なし'] }] },
-    { step: 2, order: 4, label: '客室タイプ', errorMessag: 'サンプルのエラーメッセージです。', isRequired: true, flexDirection: 'row', flexWrap: false, field: [{ name: 'field_9', type: 'radio', option: ['洋室', '和室', '和洋室'] }] },
-    { step: 3, order: 1, label: '移動手段', hint: '複数選択可', errorMessag: 'サンプルのエラーメッセージです。', isRequired: true, flexDirection: 'row', flexWrap: true, field: [{ name: 'field_10', type: 'checkbox', option: ['自家用車', 'バス', '電車', '新幹線', '飛行機'] }] },
-    { step: 3, order: 2, label: '知ったきっかけ', hint: '複数選択可', isRequired: false, flexDirection: 'column', flexWrap: false, field: [{ name: 'field_11', hasMark: true, type: 'checkbox', option: ['SNS', '新聞紙', 'webサイト', '知人/友人からの紹介', 'その他'] }] },
-    { step: 4, order: 2, label: '気になる点があれば記載ください。', isRequired: false, field: [{ name: 'field_12', type: 'textarea' }] }
-  ];
-
-  formData = initialRawData.map((item, idx) => ({
-    ...item,
-    id: 'init_' + idx
-  }));
-
-  normalizeData();
-  renderEditor();
-  generateForm();
-
-</script>
-</body>
+    </script>
+  </body>
 </html>
