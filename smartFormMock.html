@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
-      ステップ型フォーム GUIジェネレーター (カラー変更・スライド対応版)
+      ステップ型フォーム GUIジェネレーター (カラー変更・サイズ・スライド・幅設定対応版)
     </title>
     <style>
       :root {
@@ -39,9 +39,12 @@
         padding: 40px 20px;
         box-sizing: border-box;
       }
+
+      /* =========================================
+         指定のフォームコンテナおよびステップ幅の設定
+         ========================================= */
       #form-container {
-        width: 100%;
-        max-width: 685px; /* Vueコンポーネントの width: 685px に準拠 */
+        width: 685px; /* コンテナ全体を 685px に固定 */
         background: white;
         border: solid 1px #dcdcdc;
         overflow: hidden;
@@ -57,10 +60,14 @@
         align-items: flex-start;
       }
       .step-content {
-        padding: 24px 43px;
-        flex: 0 0 100%;
-        width: 100%;
-        box-sizing: border-box;
+        width: 685px;        /* 要望: 685px */
+        padding: 0 43px;     /* 要望: 0 43px */
+        flex: 0 0 685px;     /* flexアイテムとしての幅を固定 */
+        box-sizing: border-box; /* paddingを含めて685pxにする */
+      }
+      /* padding-topが0になると一番上の項目が見づらくなるためマージンで調整 */
+      .step-content > .form-group:first-child {
+        margin-top: 24px;
       }
 
       /* 右側：エディタエリア */
@@ -74,15 +81,17 @@
         border-left: 2px solid #1a1a1a;
       }
 
-      /* ▼▼ カラー設定エリア ▼▼ */
+      /* カラー＆サイズ設定エリア */
       .color-settings {
         display: flex;
         justify-content: space-between;
+        align-items: center;
         gap: 10px;
         padding: 15px 20px;
         background: #1e1e1e;
         border-bottom: 1px solid #333;
         font-size: 12px;
+        flex-wrap: wrap;
       }
       .color-settings label {
         display: flex;
@@ -98,6 +107,14 @@
         padding: 0;
         background: transparent;
         cursor: pointer;
+      }
+      .color-settings select {
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 4px;
+        font-size: 12px;
       }
 
       /* タブUI */
@@ -151,7 +168,7 @@
         gap: 10px;
       }
 
-      /* エディタ内のUIパーツ (アコーディオン化対応) */
+      /* エディタ内のUIパーツ */
       .step-card {
         background: var(--editor-card);
         border-radius: 8px;
@@ -257,6 +274,11 @@
         color: #fff;
         box-sizing: border-box;
       }
+      .editor-field input[type='range'] {
+        width: 100%;
+        margin-top: 5px;
+        cursor: pointer;
+      }
       .editor-field input[type='text']:focus,
       .editor-field select:focus {
         outline: none;
@@ -333,25 +355,26 @@
       }
 
       /* =========================================
-     プレビュー側のフォームデザイン (Vue準拠) 
-     ========================================= */
+         プレビュー側のフォームデザイン (デフォルト/current-CSS)
+         ========================================= */
       .form-group {
         margin-bottom: 25px;
       }
       .form-header {
         display: flex;
         align-items: center;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         flex-wrap: wrap;
         gap: 8px;
       }
+      
+      /* current-CSS: 必須・任意 */
       .badge {
         display: flex;
         justify-content: center;
         align-items: center;
         width: 60px;
         height: 30px;
-        padding: 2px 8px;
         border-radius: 4px;
         font-size: 14px;
         color: white;
@@ -364,6 +387,8 @@
       .badge.optional {
         background: #95a5a6;
       }
+      
+      /* current-CSS: 見出し */
       .form-label {
         font-size: 20px;
         font-weight: bold;
@@ -395,7 +420,7 @@
 
       .multi-container {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         width: 100%;
       }
 
@@ -407,7 +432,7 @@
         margin: 0 10px;
       }
 
-      /* Input & Textarea */
+      /* current-CSS: input・textarea */
       input.form-input,
       textarea.form-textarea {
         width: 100%;
@@ -433,7 +458,7 @@
         color: #acacac;
       }
 
-      /* Select */
+      /* current-CSS: select */
       select.form-select {
         width: 100%;
         min-height: 60px;
@@ -456,7 +481,7 @@
           border-color 0.2s;
       }
 
-      /* バリデーション状態 (Valid/Invalid) */
+      /* バリデーション状態 */
       input.form-input.is-valid,
       select.form-select.is-valid,
       textarea.form-textarea.is-valid {
@@ -470,7 +495,6 @@
         background-color: #fff0f0;
       }
 
-      /* Focus States (!importantでバリデーションカラーより優先して上書き) */
       input.form-input:focus,
       select.form-select:focus,
       textarea.form-textarea:focus {
@@ -478,7 +502,7 @@
         background-color: #ffffff !important;
       }
 
-      /* Checkbox & Radio (EnhancedFieldCheckable) */
+      /* current-CSS: チェックボックス・ラジオボタン */
       .check-radio-label {
         display: flex;
         align-items: center;
@@ -487,20 +511,18 @@
         border: solid 2px var(--border-color);
         border-radius: 8px;
         cursor: pointer;
-        flex: 1 1 0%; /* 横向きのときは均等幅 */
-        min-width: 120px; /* flex-wrap時などの最小幅を確保 */
+        flex: 1 1 0%;
+        min-width: 120px;
         background: white;
         box-sizing: border-box;
         transition: all 0.2s ease-in-out;
         font-size: 18px;
         color: var(--text-color);
       }
-      /* 縦向きの時は横幅100%にする */
       .multi-container[style*='flex-direction: column'] > .check-radio-label {
         flex: none;
         width: 100%;
       }
-
       .check-radio-label.is-invalid {
         border-color: var(--error-color);
         background-color: #fff0f0;
@@ -535,7 +557,7 @@
       }
       .check-radio-label input[type='radio']:checked {
         border-color: var(--base-color);
-      background: radial-gradient(circle, var(--base-color) 4.5px, transparent 4.5px);
+        background: radial-gradient(circle, var(--base-color) 4.5px, transparent 4.5px);
       }
       .check-radio-label input.no-mark {
         appearance: none;
@@ -551,7 +573,7 @@
         display: none;
       }
 
-      /* Validation Mark (ResultMarkInField) */
+      /* Validation Mark */
       .validation-mark {
         position: absolute;
         right: 12px;
@@ -568,14 +590,12 @@
         height: 100%;
         background-size: cover;
       }
-      /* 有効（青いチェックマーク） */
       .validation-mark.is-valid {
         display: block;
       }
       .validation-mark.is-valid::after {
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%233991e2' d='M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z'/%3E%3C/svg%3E");
       }
-      /* 無効（赤い！マーク） */
       .validation-mark.is-invalid {
         display: block;
       }
@@ -586,7 +606,7 @@
         padding-right: 38px;
       }
 
-      /* ナビゲーション (LayoutFooterButton) */
+      /* ナビゲーション */
       .form-navigation {
         display: flex;
         justify-content: center;
@@ -657,6 +677,38 @@
         font-size: 14px;
         font-weight: normal;
       }
+
+      /* =========================================
+         small-CSS (小さめサイズテーマの上書きスタイル)
+         ========================================= */
+      .theme-small .badge {
+        font-size: 12px;
+        width: 48px;
+        height: 24px;
+      }
+      .theme-small .form-label {
+        width: auto;
+        font-size: 18px;
+      }
+      /* ★追加: 小さめテーマ時の form-hint */
+      .theme-small .form-hint {
+        font-size: 12px;
+      }
+      .theme-small .check-radio-label {
+        min-height: 46px;
+        padding: 8px;
+      }
+      .theme-small input.form-input, 
+      .theme-small textarea.form-textarea, 
+      .theme-small select.form-select {
+        min-height: 46px;
+        max-height: 46px;
+        font-size: 15px;
+      }
+      /* selectの矢印アイコンの位置調整 (必要に応じて) */
+      .theme-small select.form-select {
+        background-position: right 12px center;
+      }
     </style>
   </head>
   <body>
@@ -682,16 +734,27 @@
     <!-- 右側：エディタエリア -->
     <div class="editor-pane">
       <div class="color-settings">
-        <label>
-          <input type="color" id="color-primary" value="#3991e2" /> メイン
-        </label>
-        <label>
-          <input type="color" id="color-primary-hover" value="#1568b9" /> ホバー
-        </label>
-        <label>
-          <input type="color" id="color-progress-bg" value="#f1fbff" />
-          プログレスバー背景
-        </label>
+        <div style="display:flex; gap:10px;">
+          <label>
+            <input type="color" id="color-primary" value="#3991e2" /> メイン
+          </label>
+          <label>
+            <input type="color" id="color-primary-hover" value="#1568b9" /> ホバー
+          </label>
+          <label>
+            <input type="color" id="color-progress-bg" value="#f1fbff" />
+            プログレスバー背景
+          </label>
+        </div>
+        <div>
+          <label>
+            サイズ: 
+            <select id="theme-size">
+              <option value="normal">通常</option>
+              <option value="small">小さめ</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <div class="editor-tabs">
@@ -709,7 +772,7 @@
 
       <div id="tab-io" class="tab-content">
         <p style="font-size: 12px; color: #aaa; margin-top: 0">
-          オブジェクト配列を貼り付けて「読み込み」を押すか、エディタの状態を「書き出し」できます。
+          オブジェクトを貼り付けて「読み込み」を押すか、エディタの状態を「書き出し」できます。
         </p>
         <textarea
           id="io-textarea"
@@ -741,56 +804,77 @@
       const editorContainer = document.getElementById('editor-container');
       const formContainer = document.getElementById('form-container');
 
-      // ============== カラー変更機能 ==============
-      document
-        .getElementById('color-primary')
-        .addEventListener('input', function (e) {
-          document.documentElement.style.setProperty(
-            '--primary-color',
-            e.target.value,
-          );
-
-          // SVGのチェックマークの色を動的に変更 (エラーマークは固定赤色)
-          const hex = e.target.value.replace('#', '');
-          let style = document.getElementById('dynamic-color-style');
-          if (!style) {
-            style = document.createElement('style');
-            style.id = 'dynamic-color-style';
-            document.head.appendChild(style);
+      // ============== テーマ反映関数 ==============
+      function applyTheme(theme) {
+        if (theme.primaryColor) {
+          document.documentElement.style.setProperty('--primary-color', theme.primaryColor);
+          document.getElementById('color-primary').value = theme.primaryColor;
+          updateValidationMarkColor(theme.primaryColor);
+        }
+        if (theme.primaryHoverColor) {
+          document.documentElement.style.setProperty('--primary-hover-color', theme.primaryHoverColor);
+          document.getElementById('color-primary-hover').value = theme.primaryHoverColor;
+        }
+        if (theme.progressBgColor) {
+          document.documentElement.style.setProperty('--progress-bg-color', theme.progressBgColor);
+          document.getElementById('color-progress-bg').value = theme.progressBgColor;
+        }
+        // サイズの反映
+        if (theme.size) {
+          document.getElementById('theme-size').value = theme.size;
+          if (theme.size === 'small') {
+            formContainer.classList.add('theme-small');
+          } else {
+            formContainer.classList.remove('theme-small');
           }
-          style.innerHTML = `
-      .validation-mark.is-valid::after {
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23${hex}' d='M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z'/%3E%3C/svg%3E");
+        } else {
+          // デフォルトは normal
+          document.getElementById('theme-size').value = 'normal';
+          formContainer.classList.remove('theme-small');
+        }
       }
-    `;
-        });
 
-      document
-        .getElementById('color-primary-hover')
-        .addEventListener('input', function (e) {
-          document.documentElement.style.setProperty(
-            '--primary-hover-color',
-            e.target.value,
-          );
-        });
+      function updateValidationMarkColor(hexColor) {
+        const hex = hexColor.replace('#', '');
+        let style = document.getElementById('dynamic-color-style');
+        if (!style) {
+          style = document.createElement('style');
+          style.id = 'dynamic-color-style';
+          document.head.appendChild(style);
+        }
+        style.innerHTML = `
+          .validation-mark.is-valid::after {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23${hex}' d='M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z'/%3E%3C/svg%3E");
+          }
+        `;
+      }
 
-      document
-        .getElementById('color-progress-bg')
-        .addEventListener('input', function (e) {
-          document.documentElement.style.setProperty(
-            '--progress-bg-color',
-            e.target.value,
-          );
-        });
+      // ============== カラー＆サイズ変更機能 ==============
+      document.getElementById('color-primary').addEventListener('input', function (e) {
+        document.documentElement.style.setProperty('--primary-color', e.target.value);
+        updateValidationMarkColor(e.target.value);
+      });
+
+      document.getElementById('color-primary-hover').addEventListener('input', function (e) {
+        document.documentElement.style.setProperty('--primary-hover-color', e.target.value);
+      });
+
+      document.getElementById('color-progress-bg').addEventListener('input', function (e) {
+        document.documentElement.style.setProperty('--progress-bg-color', e.target.value);
+      });
+
+      document.getElementById('theme-size').addEventListener('change', function (e) {
+        if (e.target.value === 'small') {
+          formContainer.classList.add('theme-small');
+        } else {
+          formContainer.classList.remove('theme-small');
+        }
+      });
 
       // ============== タブ切り替え ==============
       function switchTab(e, tabId) {
-        document
-          .querySelectorAll('.tab-btn')
-          .forEach((btn) => btn.classList.remove('active'));
-        document
-          .querySelectorAll('.tab-content')
-          .forEach((content) => content.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach((btn) => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach((content) => content.classList.remove('active'));
         if (e && e.target) e.target.classList.add('active');
         document.getElementById('tab-' + tabId).classList.add('active');
       }
@@ -837,10 +921,21 @@
           return;
         }
         try {
-          let data = new Function('return [' + rawVal + ']')();
-          data = Array.isArray(data[0]) ? data[0] : data;
+          let data = new Function('return ' + rawVal)();
+          let importedSteps = [];
+          
+          if (Array.isArray(data)) {
+            importedSteps = data;
+          } else if (Array.isArray(data[0])) {
+            importedSteps = data[0];
+          } else if (data.steps) {
+            importedSteps = data.steps;
+            if (data.theme) applyTheme(data.theme);
+          } else {
+            throw new Error('対応していないデータ形式です。');
+          }
 
-          formData = data.map((item, idx) => ({
+          formData = importedSteps.map((item, idx) => ({
             ...item,
             id: Date.now().toString() + '_' + idx,
             step: item.step || 1,
@@ -855,10 +950,7 @@
           alert('正常に読み込みました。');
           switchTab({ target: document.querySelector('.tab-btn') }, 'gui');
         } catch (e) {
-          alert(
-            '読み込みに失敗しました。構文エラーがないか確認してください。\n詳細: ' +
-              e.message,
-          );
+          alert('読み込みに失敗しました。構文エラーがないか確認してください。\n詳細: ' + e.message);
         }
       }
 
@@ -868,17 +960,27 @@
           alert('出力するデータがありません。');
           return;
         }
-        const exportData = formData.map((item) => {
+        const exportSteps = formData.map((item) => {
           const { id, ...rest } = item;
           return rest;
         });
 
-        exportData.sort((a, b) => {
+        exportSteps.sort((a, b) => {
           if (a.step !== b.step) return a.step - b.step;
           return a.order - b.order;
         });
 
-        let jsonStr = JSON.stringify(exportData, null, 2);
+        const exportObj = {
+          theme: {
+            primaryColor: document.getElementById('color-primary').value,
+            primaryHoverColor: document.getElementById('color-primary-hover').value,
+            progressBgColor: document.getElementById('color-progress-bg').value,
+            size: document.getElementById('theme-size').value // ★サイズ情報をエクスポート
+          },
+          steps: exportSteps
+        };
+
+        let jsonStr = JSON.stringify(exportObj, null, 2);
         let jsObjStr = jsonStr.replace(/"([^"]+)":/g, '$1:');
         document.getElementById('io-textarea').value = jsObjStr;
         alert('エディタのデータを書き出しました。');
@@ -1040,6 +1142,15 @@
               `
                   : ''
               }
+
+              <!-- ★★★ 幅の設定スライダー ★★★ -->
+              <div class="editor-field">
+                <label style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>入力欄の幅 (px): <span id="width_val_${item.id}_${fIndex}">${f.width ? f.width + 'px' : '自動 (最大)'}</span></span>
+                  ${f.width ? `<button class="btn-sm btn-control" style="padding:2px 6px;" onclick="updateSubField('${item.id}', ${fIndex}, 'width', null)">自動に戻す</button>` : ''}
+                </label>
+                <input type="range" min="100" max="599" value="${f.width || 599}" oninput="document.getElementById('width_val_${item.id}_${fIndex}').innerText = this.value + 'px'; updateSubField('${item.id}', ${fIndex}, 'width', Number(this.value))">
+              </div>
             </div>
           `;
             });
@@ -1131,7 +1242,11 @@
       function updateSubField(qId, fIndex, key, value) {
         const item = formData.find((d) => d.id === qId);
         if (item && item.field[fIndex]) {
-          item.field[fIndex][key] = value;
+          if (value === null) {
+            delete item.field[fIndex][key]; // 幅を「自動に戻す」場合
+          } else {
+            item.field[fIndex][key] = value;
+          }
           if (
             key === 'type' &&
             ['radio', 'checkbox', 'select'].includes(value) &&
@@ -1139,7 +1254,8 @@
           ) {
             item.field[fIndex].option = ['選択肢1', '選択肢2'];
           }
-          if (key === 'type') renderEditor();
+          
+          if (key === 'type' || value === null) renderEditor();
           generateForm();
         }
       }
@@ -1216,7 +1332,6 @@
 
       // ============== 左側：プレビューの描画 ==============
 
-      // バリデーション実行関数
       function validateField(qData, groupEl, name, isInputEvent = false) {
         if (!name) return;
         const inputs = groupEl.querySelectorAll(`[name="${name}"]`);
@@ -1225,7 +1340,6 @@
         const isRequired = qData.isRequired;
         let hasValue = false;
 
-        // ラジオ・チェックボックスの判定
         if (inputs[0].type === 'radio' || inputs[0].type === 'checkbox') {
           hasValue =
             groupEl.querySelectorAll(`[name="${name}"]:checked`).length > 0;
@@ -1239,7 +1353,6 @@
             }
           });
         }
-        // テキスト・セレクト・テキストエリアの判定
         else {
           inputs.forEach((inputEl) => {
             hasValue = inputEl.value.trim() !== '';
@@ -1255,21 +1368,17 @@
               inputEl.classList.add('is-valid');
               if (mark) mark.classList.add('is-valid');
             } else if (isRequired && !isInputEvent) {
-              // 必須かつ値なし ＆ 入力中（inputイベント）でなければエラーにする
               inputEl.classList.add('is-invalid');
               if (mark) mark.classList.add('is-invalid');
             }
           });
         }
 
-        // エラーメッセージの表示切替
         const errorEl = groupEl.querySelector('.error-message');
         if (errorEl) {
           if (!isInputEvent) {
-            // blurなどの確定時はエラーメッセージ表示を制御
             errorEl.style.display = isRequired && !hasValue ? 'block' : 'none';
           } else if (hasValue) {
-            // 入力中（input時）に値が入ったら即座にエラーメッセージを消す
             errorEl.style.display = 'none';
           }
         }
@@ -1326,9 +1435,6 @@
 
               const fieldsCont = document.createElement('div');
               fieldsCont.className = 'fields-container';
-              fieldsCont.style.display = 'flex';
-              fieldsCont.style.gap = '10px';
-              fieldsCont.style.width = '100%';
               fieldsCont.style.flexDirection =
                 q.flexDirection === 'column' ? 'column' : 'row';
               fieldsCont.style.flexWrap = q.flexWrap ? 'wrap' : 'nowrap';
@@ -1336,6 +1442,12 @@
               (q.field || []).forEach((f) => {
                 const wrapperEl = document.createElement('div');
                 wrapperEl.className = 'field-wrapper';
+
+                // ★★★ fieldごとの幅を適用 (radio/checkbox以外はここで親に適用) ★★★
+                if (f.width && f.type !== 'radio' && f.type !== 'checkbox') {
+                  wrapperEl.style.flex = 'none';
+                  wrapperEl.style.width = f.width + 'px';
+                }
 
                 if (f.prefix) {
                   const pre = document.createElement('span');
@@ -1368,9 +1480,6 @@
                 } else if (f.type === 'radio' || f.type === 'checkbox') {
                   const multiCont = document.createElement('div');
                   multiCont.className = 'multi-container';
-                  multiCont.style.display = 'flex';
-                  multiCont.style.gap = '10px';
-                  multiCont.style.width = '100%';
                   multiCont.style.flexDirection =
                     q.flexDirection === 'column' ? 'column' : 'row';
                   multiCont.style.flexWrap = q.flexWrap ? 'wrap' : 'nowrap';
@@ -1378,6 +1487,13 @@
                   (f.option || []).forEach((optVal) => {
                     const lbl = document.createElement('label');
                     lbl.className = 'check-radio-label';
+                    
+                    // ★★★ radio/checkboxの場合は各選択肢(ラベル)に幅を直接適用 ★★★
+                    if (f.width) {
+                      lbl.style.flex = 'none';
+                      lbl.style.width = f.width + 'px';
+                    }
+
                     const chk = document.createElement('input');
                     chk.type = f.type;
                     chk.name = f.name || '';
@@ -1411,7 +1527,6 @@
                 }
 
                 if (inputEl && f.type !== 'radio' && f.type !== 'checkbox') {
-                  // mark要素が存在していればその前に配置
                   const mark = wrapperEl.querySelector('.validation-mark');
                   if (mark) {
                     wrapperEl.insertBefore(inputEl, mark);
@@ -1419,7 +1534,6 @@
                     wrapperEl.appendChild(inputEl);
                   }
 
-                  // バリデーションイベントの登録
                   inputEl.addEventListener('blur', () =>
                     validateField(q, group, f.name),
                   );
@@ -1516,200 +1630,217 @@
       });
 
       // 初回起動用のデータ
-      const initialRawData = [
-        {
-          step: 1,
-          order: 1,
-          label: '名前（漢字）',
-          hint: '名前（フリガナ）に自動入力されます。',
-          errorMessag: 'サンプルのエラーメッセージです。',
-          isRequired: true,
-          flexDirection: 'row',
-          flexWrap: false,
-          field: [
-            {
-              name: 'field_1',
-              hasMark: true,
-              type: 'text',
-              placeholder: '田中',
-              optionValueType: 'furigana',
-              furiganaName: 'field_3',
-              prefix: '姓：',
-            },
-            {
-              name: 'field_2',
-              hasMark: true,
-              type: 'text',
-              placeholder: '太郎',
-              optionValueType: 'furigana',
-              furiganaName: 'field_4',
-              prefix: '名：',
-            },
-          ],
+      const initialRawData = {
+        theme: {
+          primaryColor: '#3991e2',
+          primaryHoverColor: '#1568b9',
+          progressBgColor: '#f1fbff',
+          size: 'normal' // ★初期サイズの指定
         },
-        {
-          step: 1,
-          order: 2,
-          flexDirection: 'row',
-          flexWrap: false,
-          label: '名前（フリガナ）',
-          errorMessag: 'サンプルのエラーメッセージです。',
-          isRequired: true,
-          field: [
-            {
-              name: 'field_3',
-              hasMark: true,
-              type: 'text',
-              placeholder: 'タナカ',
-              optionValueType: 'furigana',
-              furiganaName: '',
-              prefix: 'セイ：',
-            },
-            {
-              name: 'field_4',
-              hasMark: true,
-              type: 'text',
-              placeholder: 'タロウ',
-              optionValueType: 'furigana',
-              furiganaName: '',
-              prefix: 'メイ：',
-            },
-          ],
-        },
-        {
-          step: 2,
-          order: 1,
-          label: '宿泊人数（大人）',
-          errorMessag: 'サンプルのエラーメッセージです。',
-          isRequired: true,
-          field: [
-            {
-              name: 'field_5',
-              type: 'select',
-              option: ['1人', '2人', '3人', '4人', '4人以上'],
-            },
-          ],
-        },
-        {
-          step: 4,
-          order: 1,
-          label: '想定の旅費',
-          hint: ',（カンマ）を入れないでください。',
-          errorMessag: 'サンプルのエラーメッセージです。',
-          isRequired: true,
-          field: [
-            {
-              name: 'field_6',
-              hasMark: true,
-              type: 'text',
-              placeholder: '入力例',
-              optionValueType: 'justHalfSizeNumber',
-              prefix: '税込',
-              suffix: '円',
-            },
-          ],
-        },
-        {
-          step: 2,
-          order: 2,
-          label: '宿泊人数（子供）',
-          errorMessag: 'サンプルのエラーメッセージです。',
-          isRequired: true,
-          field: [
-            {
-              name: 'field_7',
-              type: 'select',
-              option: ['0人', '1人', '2人', '3人', '4人', '4人以上'],
-            },
-          ],
-        },
-        {
-          step: 2,
-          order: 3,
-          label: '展望タイプ',
-          errorMessag: 'サンプルのエラーメッセージです。',
-          isRequired: true,
-          flexDirection: 'row',
-          flexWrap: false,
-          field: [
-            {
-              name: 'field_8',
-              type: 'radio',
-              option: ['海側', '山側', '希望なし'],
-            },
-          ],
-        },
-        {
-          step: 2,
-          order: 4,
-          label: '客室タイプ',
-          errorMessag: 'サンプルのエラーメッセージです。',
-          isRequired: true,
-          flexDirection: 'row',
-          flexWrap: false,
-          field: [
-            {
-              name: 'field_9',
-              type: 'radio',
-              option: ['洋室', '和室', '和洋室'],
-            },
-          ],
-        },
-        {
-          step: 3,
-          order: 1,
-          label: '移動手段',
-          hint: '複数選択可',
-          errorMessag: 'サンプルのエラーメッセージです。',
-          isRequired: true,
-          flexDirection: 'row',
-          flexWrap: true,
-          field: [
-            {
-              name: 'field_10',
-              type: 'checkbox',
-              option: ['自家用車', 'バス', '電車', '新幹線', '飛行機'],
-            },
-          ],
-        },
-        {
-          step: 3,
-          order: 2,
-          label: '知ったきっかけ',
-          hint: '複数選択可',
-          isRequired: false,
-          flexDirection: 'column',
-          flexWrap: false,
-          field: [
-            {
-              name: 'field_11',
-              hasMark: true,
-              type: 'checkbox',
-              option: [
-                'SNS',
-                '新聞紙',
-                'webサイト',
-                '知人/友人からの紹介',
-                'その他',
-              ],
-            },
-          ],
-        },
-        {
-          step: 4,
-          order: 2,
-          label: '気になる点があれば記載ください。',
-          isRequired: false,
-          field: [
-            {
-              name: 'field_12',
-              type: 'textarea',
-            },
-          ],
-        },
-      ];
+        steps: [
+          {
+            step: 1,
+            order: 1,
+            label: '名前（漢字）',
+            hint: '名前（フリガナ）に自動入力されます。',
+            errorMessag: 'サンプルのエラーメッセージです。',
+            isRequired: true,
+            flexDirection: 'row',
+            flexWrap: false,
+            field: [
+              {
+                name: 'field_1',
+                hasMark: true,
+                type: 'text',
+                placeholder: '田中',
+                optionValueType: 'furigana',
+                furiganaName: 'field_3',
+                prefix: '姓：',
+              },
+              {
+                name: 'field_2',
+                hasMark: true,
+                type: 'text',
+                placeholder: '太郎',
+                optionValueType: 'furigana',
+                furiganaName: 'field_4',
+                prefix: '名：',
+              },
+            ],
+          },
+          {
+            step: 1,
+            order: 2,
+            flexDirection: 'row',
+            flexWrap: false,
+            label: '名前（フリガナ）',
+            errorMessag: 'サンプルのエラーメッセージです。',
+            isRequired: true,
+            field: [
+              {
+                name: 'field_3',
+                hasMark: true,
+                type: 'text',
+                placeholder: 'タナカ',
+                optionValueType: 'furigana',
+                furiganaName: '',
+                prefix: 'セイ：',
+              },
+              {
+                name: 'field_4',
+                hasMark: true,
+                type: 'text',
+                placeholder: 'タロウ',
+                optionValueType: 'furigana',
+                furiganaName: '',
+                prefix: 'メイ：',
+              },
+            ],
+          },
+          {
+            step: 2,
+            order: 1,
+            label: '宿泊人数（大人）',
+            errorMessag: 'サンプルのエラーメッセージです。',
+            isRequired: true,
+            field: [
+              {
+                name: 'field_5',
+                type: 'select',
+                option: ['1人', '2人', '3人', '4人', '4人以上'],
+                width: 300 // ★幅指定のサンプル
+              },
+            ],
+          },
+          {
+            step: 4,
+            order: 1,
+            label: '想定の旅費',
+            hint: ',（カンマ）を入れないでください。',
+            errorMessag: 'サンプルのエラーメッセージです。',
+            isRequired: true,
+            field: [
+              {
+                name: 'field_6',
+                hasMark: true,
+                type: 'text',
+                placeholder: '入力例',
+                optionValueType: 'justHalfSizeNumber',
+                prefix: '税込',
+                suffix: '円',
+                width: 400 // ★幅指定のサンプル
+              },
+            ],
+          },
+          {
+            step: 2,
+            order: 2,
+            label: '宿泊人数（子供）',
+            errorMessag: 'サンプルのエラーメッセージです。',
+            isRequired: true,
+            field: [
+              {
+                name: 'field_7',
+                type: 'select',
+                option: ['0人', '1人', '2人', '3人', '4人', '4人以上'],
+                width: 300
+              },
+            ],
+          },
+          {
+            step: 2,
+            order: 3,
+            label: '展望タイプ',
+            errorMessag: 'サンプルのエラーメッセージです。',
+            isRequired: true,
+            flexDirection: 'row',
+            flexWrap: false,
+            field: [
+              {
+                name: 'field_8',
+                type: 'radio',
+                option: ['海側', '山側', '希望なし'],
+                width: 200 // ★ラジオボタンの幅指定のサンプル
+              },
+            ],
+          },
+          {
+            step: 2,
+            order: 4,
+            label: '客室タイプ',
+            errorMessag: 'サンプルのエラーメッセージです。',
+            isRequired: true,
+            flexDirection: 'row',
+            flexWrap: false,
+            field: [
+              {
+                name: 'field_9',
+                type: 'radio',
+                option: ['洋室', '和室', '和洋室'],
+              },
+            ],
+          },
+          {
+            step: 3,
+            order: 1,
+            label: '移動手段',
+            hint: '複数選択可',
+            errorMessag: 'サンプルのエラーメッセージです。',
+            isRequired: true,
+            flexDirection: 'row',
+            flexWrap: true,
+            field: [
+              {
+                name: 'field_10',
+                type: 'checkbox',
+                option: ['自家用車', 'バス', '電車', '新幹線', '飛行機'],
+                width: 150 // ★チェックボックスの幅指定のサンプル
+              },
+            ],
+          },
+          {
+            step: 3,
+            order: 2,
+            label: '知ったきっかけ',
+            hint: '複数選択可',
+            isRequired: false,
+            flexDirection: 'column',
+            flexWrap: false,
+            field: [
+              {
+                name: 'field_11',
+                hasMark: true,
+                type: 'checkbox',
+                option: [
+                  'SNS',
+                  '新聞紙',
+                  'webサイト',
+                  '知人/友人からの紹介',
+                  'その他',
+                ],
+              },
+            ],
+          },
+          {
+            step: 4,
+            order: 2,
+            label: '気になる点があれば記載ください。',
+            isRequired: false,
+            field: [
+              {
+                name: 'field_12',
+                type: 'textarea',
+              },
+            ],
+          },
+        ]
+      };
 
-      formData = initialRawData.map((item, idx) => ({
+      if (initialRawData.theme) {
+        applyTheme(initialRawData.theme);
+      }
+
+      formData = initialRawData.steps.map((item, idx) => ({
         ...item,
         id: 'init_' + idx,
       }));
