@@ -3,11 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>
-      ステップ型フォーム GUIジェネレーター (カラー変更・サイズ・スライド・幅設定対応版)
-    </title>
+    <title>ステップ型フォーム GUIジェネレーター (レスポンシブ・カスタムサイズ対応版)</title>
     <style>
       :root {
+        /* カラー変数 */
         --base-color: #3991e2;
         --primary-color: #3991e2;
         --primary-hover-color: #1568b9;
@@ -18,17 +17,32 @@
         --text-color: #333;
         --editor-bg: #2d2d2d;
         --editor-card: #3d3d3d;
+        
+        /* サイズ変数 (動的に上書きされる) */
+        --badge-font-size: 14px;
+        --badge-width: 60px;
+        --badge-height: 30px;
+        --label-font-size: 20px;
+        --hint-font-size: 14px;
+        --check-label-min-height: 60px;
+        --check-label-padding: 16px;
+        --field-min-height: 60px;
+        --field-max-height: 60px;
+        --field-font-size: 18px;
+        --prefix-suffix-font-size: 16px;
+        --prefix-suffix-margin: 8px;
       }
       body {
         margin: 0;
-        font-family:
-          'Hiragino Kaku Gothic Pro', Meiryo, Osaka, 'MS PGothic', sans-serif;
+        font-family: 'Hiragino Kaku Gothic Pro', Meiryo, Osaka, 'MS PGothic', sans-serif;
         display: flex;
         height: 100vh;
         color: var(--text-color);
       }
 
-      /* 左側：プレビューエリア */
+      /* =========================================
+         左側：プレビューエリア
+         ========================================= */
       .preview-pane {
         width: 60%;
         background: var(--bg-color);
@@ -39,38 +53,55 @@
         padding: 40px 20px;
         box-sizing: border-box;
       }
+      /* SPモード時のプレビューエリア余白 */
+      .preview-pane.sp-mode {
+        padding: 40px calc((60% - 360px) / 2);
+      }
 
-      /* =========================================
-         指定のフォームコンテナおよびステップ幅の設定
-         ========================================= */
       #form-container {
-        width: 685px; /* コンテナ全体を 685px に固定 */
         background: white;
         border: solid 1px #dcdcdc;
         overflow: hidden;
         display: none;
         overflow-y: auto;
+        transition: width 0.3s;
       }
+      /* PCモード時 */
+      #form-container.pc-mode {
+        width: 685px;
+      }
+      .step-content.pc-mode {
+        width: 685px;
+        padding: 0 43px;
+        flex: 0 0 685px;
+      }
+      /* SPモード時 */
+      #form-container.sp-mode {
+        width: 100%;
+      }
+      .step-content.sp-mode {
+        width: 100%;
+        padding: 0 20px;
+        flex: 0 0 100%;
+      }
+
       #form-steps-wrapper {
         display: flex;
         width: 100%;
-        transition:
-          transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
-          height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+                    height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         align-items: flex-start;
       }
       .step-content {
-        width: 685px;        /* 要望: 685px */
-        padding: 0 43px;     /* 要望: 0 43px */
-        flex: 0 0 685px;     /* flexアイテムとしての幅を固定 */
-        box-sizing: border-box; /* paddingを含めて685pxにする */
+        box-sizing: border-box;
       }
-      /* padding-topが0になると一番上の項目が見づらくなるためマージンで調整 */
       .step-content > .form-group:first-child {
         margin-top: 24px;
       }
 
-      /* 右側：エディタエリア */
+      /* =========================================
+         右側：エディタエリア
+         ========================================= */
       .editor-pane {
         width: 40%;
         background: var(--editor-bg);
@@ -80,41 +111,34 @@
         box-sizing: border-box;
         border-left: 2px solid #1a1a1a;
       }
-
-      /* カラー＆サイズ設定エリア */
-      .color-settings {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-        padding: 15px 20px;
+      /* デバイス切り替えボタン */
+      .device-switch-container {
         background: #1e1e1e;
-        border-bottom: 1px solid #333;
-        font-size: 12px;
-        flex-wrap: wrap;
-      }
-      .color-settings label {
+        padding: 10px 20px;
         display: flex;
-        align-items: center;
-        gap: 8px;
+        justify-content: center;
+        border-bottom: 1px solid #333;
+      }
+      .device-toggle {
+        display: flex;
+        background: #111;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .device-label {
+        padding: 8px 20px;
+        cursor: pointer;
         color: #aaa;
-        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        transition: 0.2s;
       }
-      .color-settings input[type='color'] {
-        border: none;
-        width: 26px;
-        height: 26px;
-        padding: 0;
-        background: transparent;
-        cursor: pointer;
-      }
-      .color-settings select {
-        background: #333;
+      .device-label.active {
+        background: var(--base-color);
         color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 4px;
-        font-size: 12px;
+      }
+      .device-label input {
+        display: none;
       }
 
       /* タブUI */
@@ -124,7 +148,7 @@
       }
       .tab-btn {
         flex: 1;
-        padding: 15px;
+        padding: 12px;
         background: #1a1a1a;
         color: #888;
         border: none;
@@ -163,569 +187,237 @@
         box-sizing: border-box;
         margin-bottom: 15px;
       }
-      .io-actions {
-        display: flex;
-        gap: 10px;
+      .io-actions { display: flex; gap: 10px; }
+
+      /* エディタのフィールド共通スタイル */
+      .editor-field { margin-bottom: 10px; }
+      .editor-field label {
+        display: block; font-size: 12px; color: #aaa; margin-bottom: 4px;
       }
+      .editor-field input[type='text'], .editor-field select {
+        width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #555;
+        background: #2d2d2d; color: #fff; box-sizing: border-box;
+      }
+      .editor-field input[type='range'] { width: 100%; margin-top: 5px; cursor: pointer; }
+      .editor-field input[type='text']:focus, .editor-field select:focus {
+        outline: none; border-color: var(--primary-color);
+      }
+      .editor-field input[type='color'] {
+        border: none; width: 100%; height: 36px; padding: 0; background: transparent; cursor: pointer;
+      }
+      .editor-flex-row { display: flex; gap: 10px; }
+      .editor-flex-row > div { flex: 1; }
+      .editor-field-inline { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 
       /* エディタ内のUIパーツ */
       .step-card {
-        background: var(--editor-card);
-        border-radius: 8px;
-        margin-bottom: 20px;
-        border-left: 4px solid var(--base-color);
-        overflow: hidden;
+        background: var(--editor-card); border-radius: 8px; margin-bottom: 20px;
+        border-left: 4px solid var(--base-color); overflow: hidden;
       }
       .step-header {
-        font-size: 16px;
-        font-weight: bold;
-        padding: 15px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        cursor: pointer;
-        background: #333;
-        transition: background 0.2s;
+        font-size: 16px; font-weight: bold; padding: 15px; display: flex;
+        justify-content: space-between; align-items: center; cursor: pointer; background: #333;
       }
-      .step-header:hover {
-        background: #3a3a3a;
-      }
-      .step-title-area {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .accordion-icon {
-        font-size: 12px;
-        transition: transform 0.3s;
-        display: inline-block;
-      }
-      .step-card.active .accordion-icon {
-        transform: rotate(90deg);
-      }
-      .step-card.active .step-body {
-        display: block;
-      }
-      .step-body {
-        display: none;
-        padding: 15px;
-        border-top: 1px solid #444;
-      }
+      .step-header:hover { background: #3a3a3a; }
+      .step-title-area { display: flex; align-items: center; gap: 10px; }
+      .accordion-icon { font-size: 12px; transition: transform 0.3s; display: inline-block; }
+      .step-card.active .accordion-icon { transform: rotate(90deg); }
+      .step-card.active .step-body { display: block; }
+      .step-body { display: none; padding: 15px; border-top: 1px solid #444; }
       .question-card {
-        background: #2a2a2a;
-        border-radius: 6px;
-        padding: 15px;
-        margin-bottom: 15px;
-        border: 1px solid #444;
-        position: relative;
+        background: #2a2a2a; border-radius: 6px; padding: 15px; margin-bottom: 15px;
+        border: 1px solid #444; position: relative;
       }
-
-      /* 順番制御エリア */
       .order-controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #1e1e1e;
-        padding: 8px 12px;
-        margin-bottom: 15px;
-        border-radius: 4px;
+        display: flex; justify-content: space-between; align-items: center;
+        background: #1e1e1e; padding: 8px 12px; margin-bottom: 15px; border-radius: 4px;
       }
-      .order-controls select {
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-      }
-
-      /* 入力欄（子要素）のカード */
-      .sub-field-card {
-        background: #1e1e1e;
-        border: 1px dashed #555;
-        border-radius: 4px;
-        padding: 10px;
-        margin-bottom: 10px;
-      }
-      .sub-field-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-        font-size: 12px;
-        color: #aaa;
-      }
-      .editor-field {
-        margin-bottom: 10px;
-      }
-      .editor-field label {
-        display: block;
-        font-size: 12px;
-        color: #aaa;
-        margin-bottom: 4px;
-      }
-      .editor-field input[type='text'],
-      .editor-field select {
-        width: 100%;
-        padding: 8px;
-        border-radius: 4px;
-        border: 1px solid #555;
-        background: #2d2d2d;
-        color: #fff;
-        box-sizing: border-box;
-      }
-      .editor-field input[type='range'] {
-        width: 100%;
-        margin-top: 5px;
-        cursor: pointer;
-      }
-      .editor-field input[type='text']:focus,
-      .editor-field select:focus {
-        outline: none;
-        border-color: var(--primary-color);
-      }
-      .editor-field-inline {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-      }
-      .editor-flex-row {
-        display: flex;
-        gap: 10px;
-      }
-      .editor-flex-row > div {
-        flex: 1;
-      }
+      .order-controls select { background: #333; color: #fff; border: 1px solid #555; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+      .sub-field-card { background: #1e1e1e; border: 1px dashed #555; border-radius: 4px; padding: 10px; margin-bottom: 10px; }
+      .sub-field-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; color: #aaa; }
 
       /* ボタン類 */
-      .btn-sm {
-        padding: 6px 10px;
-        border-radius: 4px;
-        border: none;
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: bold;
-        text-align: center;
-      }
-      .btn-sm:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-      }
-      .btn-control {
-        background: #444;
-        color: #fff;
-      }
-      .btn-control:hover:not(:disabled) {
-        background: #555;
-      }
-      .btn-danger {
-        background: var(--error-color);
-        color: white;
-      }
-      .btn-primary {
-        background: var(--base-color);
-        color: white;
-      }
-      .btn-add {
-        background: #4caf50;
-        color: white;
-        width: 100%;
-        padding: 10px;
-        margin-top: 5px;
-      }
-      .btn-add-sub {
-        background: #555;
-        color: #fff;
-        width: 100%;
-        padding: 8px;
-        margin-top: 5px;
-        border: 1px dashed #888;
-      }
-      .btn-add-step {
-        background: var(--primary-color);
-        color: #fff;
-        width: 100%;
-        padding: 12px;
-        margin-top: 10px;
-      }
-      .btn-sm:hover:not(:disabled),
-      .btn-add-sub:hover {
-        opacity: 0.8;
-      }
+      .btn-sm { padding: 6px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; font-weight: bold; text-align: center; }
+      .btn-sm:disabled { opacity: 0.3; cursor: not-allowed; }
+      .btn-control { background: #444; color: #fff; }
+      .btn-control:hover:not(:disabled) { background: #555; }
+      .btn-danger { background: var(--error-color); color: white; }
+      .btn-primary { background: var(--base-color); color: white; }
+      .btn-add { background: #4caf50; color: white; width: 100%; padding: 10px; margin-top: 5px; }
+      .btn-add-sub { background: #555; color: #fff; width: 100%; padding: 8px; margin-top: 5px; border: 1px dashed #888; }
+      .btn-add-step { background: var(--primary-color); color: #fff; width: 100%; padding: 12px; margin-top: 10px; }
+      .btn-sm:hover:not(:disabled), .btn-add-sub:hover { opacity: 0.8; }
 
       /* =========================================
-         プレビュー側のフォームデザイン (デフォルト/current-CSS)
+         プレビュー側のフォームデザイン (動的変数適用)
          ========================================= */
-      .form-group {
-        margin-bottom: 25px;
-      }
-      .form-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
+      .form-group { margin-bottom: 25px; }
+      .form-header { display: flex; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 0 8px; }
       
-      /* current-CSS: 必須・任意 */
       .badge {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 60px;
-        height: 30px;
+        display: flex; justify-content: center; align-items: center;
+        width: var(--badge-width);
+        height: var(--badge-height);
         border-radius: 4px;
-        font-size: 14px;
-        color: white;
-        font-weight: bold;
-        text-align: center;
+        font-size: var(--badge-font-size);
+        color: white; font-weight: bold; text-align: center;
       }
-      .badge.required {
-        background: var(--error-color);
-      }
-      .badge.optional {
-        background: #95a5a6;
-      }
+      .badge.required { background: var(--error-color); }
+      .badge.optional { background: #95a5a6; }
       
-      /* current-CSS: 見出し */
       .form-label {
-        font-size: 20px;
+        font-size: var(--label-font-size);
         font-weight: bold;
       }
       .form-hint {
-        font-size: 14px;
-        color: #777;
-        width: fit-content;
-        margin-top: 4px;
+        font-size: var(--hint-font-size);
+        color: #777; width: fit-content; margin-top: 4px;
       }
 
-      /* Fields Layout Control */
-      .fields-container {
-        display: flex;
-        gap: 10px;
-        width: 100%;
-      }
+      .fields-container { display: flex; gap: 10px; width: 100%; }
       .field-wrapper {
-        display: flex;
-        align-items: center;
-        flex: 1 1 0%;
-        position: relative;
-        min-width: 100px;
+        display: flex; align-items: center; flex: 1 1 0%; position: relative; min-width: 100px;
       }
-      .fields-container[style*='flex-direction: column'] > .field-wrapper {
+      .fields-container[style*='flex-direction: column'] > .field-wrapper { width: 100%; flex: none; }
+      .multi-container { display: flex; gap: 8px; width: 100%; }
+      
+      /* prefix, suffixの変数適用 */
+      .prefix, .suffix { 
+        font-size: var(--prefix-suffix-font-size); 
+        color: #333; 
+        white-space: nowrap; 
+        margin: 0 var(--prefix-suffix-margin); 
+      }
+
+      input.form-input, textarea.form-textarea {
         width: 100%;
-        flex: none;
+        min-height: var(--field-min-height);
+        max-height: var(--field-max-height);
+        height: var(--field-min-height); /* textareaの自動伸長との兼ね合い */
+        padding: 12px 14px; border: solid 2px var(--border-color); border-radius: 4px;
+        font-size: var(--field-font-size); box-sizing: border-box;
+        background-color: #fff; color: var(--text-color); outline: none;
+        transition: background-color 0.2s, border-color 0.2s;
       }
+      textarea.form-textarea { height: auto; }
+      input.form-input::placeholder, textarea.form-textarea::placeholder { color: #acacac; }
 
-      .multi-container {
-        display: flex;
-        gap: 8px;
-        width: 100%;
-      }
-
-      .prefix,
-      .suffix {
-        font-size: 16px;
-        color: #333;
-        white-space: nowrap;
-        margin: 0 10px;
-      }
-
-      /* current-CSS: input・textarea */
-      input.form-input,
-      textarea.form-textarea {
-        width: 100%;
-        height: 60px;
-        padding: 12px 14px;
-        border: solid 2px var(--border-color);
-        border-radius: 4px;
-        font-size: 18px;
-        box-sizing: border-box;
-        background-color: #fff;
-        color: var(--text-color);
-        outline: none;
-        transition:
-          background-color 0.2s,
-          border-color 0.2s;
-      }
-      textarea.form-textarea {
-        height: auto;
-        min-height: 60px;
-      }
-      input.form-input::placeholder,
-      textarea.form-textarea::placeholder {
-        color: #acacac;
-      }
-
-      /* current-CSS: select */
       select.form-select {
         width: 100%;
-        min-height: 60px;
-        padding: 0 16px;
-        border: solid 2px var(--border-color);
-        border-radius: 8px;
-        font-size: 18px;
-        box-sizing: border-box;
-        background-color: #fff;
-        color: var(--text-color);
-        outline: none;
-        cursor: pointer;
+        min-height: var(--field-min-height);
+        max-height: var(--field-max-height);
+        padding: 0 16px; border: solid 2px var(--border-color); border-radius: 8px;
+        font-size: var(--field-font-size); box-sizing: border-box;
+        background-color: #fff; color: var(--text-color); outline: none; cursor: pointer;
         appearance: none;
         background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23333'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 16px center;
-        background-size: 24px;
-        transition:
-          background-color 0.2s,
-          border-color 0.2s;
+        background-repeat: no-repeat; background-position: right 16px center; background-size: 24px;
+        transition: background-color 0.2s, border-color 0.2s;
+      }
+
+      /* SPモード時のselectの矢印アイコン微調整 */
+      #form-container.sp-mode select.form-select {
+        background-position: right 12px center;
       }
 
       /* バリデーション状態 */
-      input.form-input.is-valid,
-      select.form-select.is-valid,
-      textarea.form-textarea.is-valid {
-        border-color: var(--border-color);
-        background-color: #f1fbff;
+      input.form-input.is-valid, select.form-select.is-valid, textarea.form-textarea.is-valid {
+        border-color: var(--border-color); background-color: #f1fbff;
       }
-      input.form-input.is-invalid,
-      select.form-select.is-invalid,
-      textarea.form-textarea.is-invalid {
-        border-color: var(--error-color);
-        background-color: #fff0f0;
+      input.form-input.is-invalid, select.form-select.is-invalid, textarea.form-textarea.is-invalid {
+        border-color: var(--error-color); background-color: #fff0f0;
+      }
+      input.form-input:focus, select.form-select:focus, textarea.form-textarea:focus {
+        border-color: var(--base-color) !important; background-color: #ffffff !important;
       }
 
-      input.form-input:focus,
-      select.form-select:focus,
-      textarea.form-textarea:focus {
-        border-color: var(--base-color) !important;
-        background-color: #ffffff !important;
-      }
-
-      /* current-CSS: チェックボックス・ラジオボタン */
       .check-radio-label {
-        display: flex;
-        align-items: center;
-        padding: 16px;
-        min-height: 60px;
-        border: solid 2px var(--border-color);
-        border-radius: 8px;
-        cursor: pointer;
-        flex: 1 1 0%;
-        min-width: 120px;
-        background: white;
-        box-sizing: border-box;
+        display: flex; align-items: center;
+        padding: var(--check-label-padding);
+        min-height: var(--check-label-min-height);
+        border: solid 2px var(--border-color); border-radius: 8px; cursor: pointer;
+        flex: 1 1 0%; min-width: 120px; background: white; box-sizing: border-box;
         transition: all 0.2s ease-in-out;
-        font-size: 18px;
-        color: var(--text-color);
+        font-size: var(--field-font-size); color: var(--text-color);
       }
-      .multi-container[style*='flex-direction: column'] > .check-radio-label {
-        flex: none;
-        width: 100%;
-      }
-      .check-radio-label.is-invalid {
-        border-color: var(--error-color);
-        background-color: #fff0f0;
-      }
+      .multi-container[style*='flex-direction: column'] > .check-radio-label { flex: none; width: 100%; }
+      .check-radio-label.is-invalid { border-color: var(--error-color); background-color: #fff0f0; }
       .check-radio-label:has(input:checked) {
-        border-color: var(--base-color);
-        background-color: #f1fbff;
-        box-shadow: 0 0 0 2px var(--base-color);
+        border-color: var(--base-color); background-color: #f1fbff; box-shadow: 0 0 0 2px var(--base-color);
       }
-
-      .check-radio-label input {
-        width: 17px;
-        height: 17px;
-        border: 2px solid #becad0;
-        margin-right: 8px;
-        cursor: pointer;
-        appearance: none;
-        position: relative;
-      }
-      .check-radio-label input[type='checkbox'] {
-        border-radius: 3px;
-      }
+      .check-radio-label input { width: 17px; height: 17px; border: 2px solid #becad0; margin-right: 8px; cursor: pointer; appearance: none; position: relative; }
+      .check-radio-label input[type='checkbox'] { border-radius: 3px; }
       .check-radio-label input[type='checkbox']:checked {
-        background-color: #1e90ff;
-        border: 2px solid transparent;
+        background-color: #1e90ff; border: 2px solid transparent;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' d='M3 6.5l2 2 4.5-5'/%3E%3C/svg%3E");
-        background-position: center;
-        background-repeat: no-repeat;
+        background-position: center; background-repeat: no-repeat;
       }
-      .check-radio-label input[type='radio'] {
-        border-radius: 50%;
-      }
+      .check-radio-label input[type='radio'] { border-radius: 50%; }
       .check-radio-label input[type='radio']:checked {
-        border-color: var(--base-color);
-        background: radial-gradient(circle, var(--base-color) 4.5px, transparent 4.5px);
+        border-color: var(--base-color); background: radial-gradient(circle, var(--base-color) 4.5px, transparent 4.5px);
       }
-      .check-radio-label input.no-mark {
-        appearance: none;
-        width: 0;
-        margin: 0;
-      }
+      .check-radio-label input.no-mark { appearance: none; width: 0; margin: 0; }
 
-      /* Error message */
-      .error-message {
-        color: var(--error-color);
-        font-size: 12px;
-        margin-top: 5px;
-        display: none;
-      }
-
-      /* Validation Mark */
-      .validation-mark {
-        position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 24px;
-        height: 24px;
-        display: none;
-      }
-      .validation-mark::after {
-        content: '';
-        display: block;
-        width: 100%;
-        height: 100%;
-        background-size: cover;
-      }
-      .validation-mark.is-valid {
-        display: block;
-      }
+      .error-message { color: var(--error-color); font-size: 12px; margin-top: 5px; display: none; }
+      .validation-mark { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; display: none; }
+      .validation-mark::after { content: ''; display: block; width: 100%; height: 100%; background-size: cover; }
+      .validation-mark.is-valid { display: block; }
       .validation-mark.is-valid::after {
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%233991e2' d='M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z'/%3E%3C/svg%3E");
       }
-      .validation-mark.is-invalid {
-        display: block;
-      }
+      .validation-mark.is-invalid { display: block; }
       .validation-mark.is-invalid::after {
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23ff7f72' d='M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c13.3 0 24 10.7 24 24V264c0 13.3-10.7 24-24 24s-24-10.7-24-24V152c0-13.3 10.7-24 24-24zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z'/%3E%3C/svg%3E");
       }
-      input.form-input.has-mark {
-        padding-right: 38px;
-      }
+      input.form-input.has-mark { padding-right: 38px; }
 
       /* ナビゲーション */
-      .form-navigation {
+      .form-navigation { display: flex; justify-content: center; gap: 15px; padding: 24px 16px; background: white; border-top: 1px solid #eee; z-index: 10; position: relative; }
+      .btn { padding: 16px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; transition: background-color 0.2s; min-width: 160px; }
+      .btn-prev { background: #f0f0f0; color: #555; }
+      .btn-next { background: #d0e4f5; color: white; min-width: 256px; }
+      .btn-next.active { background: var(--primary-color); }
+      .btn-next.active:hover { background: var(--primary-hover-color); }
+
+      /* SPモード時のボタンサイズ変更 */
+      #form-container.sp-mode .btn-prev {
+        width: 120px;
+        height: 50px;
+        min-width: 0;
+        padding: 0;
         display: flex;
         justify-content: center;
-        gap: 15px;
-        padding: 24px 16px;
-        background: white;
-        border-top: 1px solid #eee;
-        z-index: 10;
-        position: relative;
+        align-items: center;
       }
-      .btn {
-        padding: 16px 24px;
-        border-radius: 6px;
-        font-size: 16px;
-        font-weight: bold;
-        cursor: pointer;
-        border: none;
-        transition: background-color 0.2s;
-        min-width: 160px;
-      }
-      .btn-prev {
-        background: #f0f0f0;
-        color: #555;
-      }
-      .btn-next {
-        background: #d0e4f5;
-        color: white;
-        min-width: 256px;
-      }
-      .btn-next.active {
-        background: var(--primary-color);
-      }
-      .btn-next.active:hover {
-        background: var(--primary-hover-color);
+      #form-container.sp-mode .btn-next {
+        width: 175px;
+        height: 50px;
+        min-width: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
       }
 
       /* プログレスバー */
-      .progress-container {
-        background: var(--progress-bg-color);
-        padding: 15px 30px;
-        display: flex;
-        align-items: center;
-        border-top: 1px solid #e0e0e0;
-        transition: background-color 0.3s;
-      }
-      .progress-bar-bg {
-        flex-grow: 1;
-        height: 10px;
-        background: white;
-        border-radius: 5px;
-        border: 1px solid #d0d0d0;
-        overflow: hidden;
-        margin-right: 15px;
-      }
-      .progress-bar-fill {
-        height: 100%;
-        background: var(--primary-color);
-        width: 0%;
-        transition: width 0.3s ease;
-      }
-      .progress-text {
-        font-weight: bold;
-        font-size: 18px;
-        color: var(--text-color);
-      }
-      .progress-text span {
-        color: #888;
-        font-size: 14px;
-        font-weight: normal;
-      }
-
-      /* =========================================
-         small-CSS (小さめサイズテーマの上書きスタイル)
-         ========================================= */
-      .theme-small .badge {
-        font-size: 12px;
-        width: 48px;
-        height: 24px;
-      }
-      .theme-small .form-label {
-        width: auto;
-        font-size: 18px;
-      }
-      /* ★追加: 小さめテーマ時の form-hint */
-      .theme-small .form-hint {
-        font-size: 12px;
-      }
-      .theme-small .check-radio-label {
-        min-height: 46px;
-        padding: 8px;
-      }
-      .theme-small input.form-input, 
-      .theme-small textarea.form-textarea, 
-      .theme-small select.form-select {
-        min-height: 46px;
-        max-height: 46px;
-        font-size: 15px;
-      }
-      /* selectの矢印アイコンの位置調整 (必要に応じて) */
-      .theme-small select.form-select {
-        background-position: right 12px center;
-      }
+      .progress-container { background: var(--progress-bg-color); padding: 15px 30px; display: flex; align-items: center; border-top: 1px solid #e0e0e0; transition: background-color 0.3s; }
+      .progress-bar-bg { flex-grow: 1; height: 10px; background: white; border-radius: 5px; border: 1px solid #d0d0d0; overflow: hidden; margin-right: 15px; }
+      .progress-bar-fill { height: 100%; background: var(--primary-color); width: 0%; transition: width 0.3s ease; }
+      .progress-text { font-weight: bold; font-size: 18px; color: var(--text-color); }
+      .progress-text span { color: #888; font-size: 14px; font-weight: normal; }
     </style>
   </head>
   <body>
     <!-- 左側：プレビューエリア -->
-    <div class="preview-pane">
-      <div id="form-container">
+    <div class="preview-pane pc-mode">
+      <div id="form-container" class="pc-mode">
         <div id="form-steps-wrapper"></div>
         <div class="form-navigation">
-          <button class="btn btn-prev" id="btn-prev" style="display: none">
-            戻る
-          </button>
+          <button class="btn btn-prev" id="btn-prev" style="display: none">戻る</button>
           <button class="btn btn-next active" id="btn-next">次へ</button>
         </div>
         <div class="progress-container">
-          <div class="progress-bar-bg">
-            <div class="progress-bar-fill" id="progress-fill"></div>
-          </div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
           <div class="progress-text" id="progress-text">1 <span>/ 1</span></div>
         </div>
       </div>
@@ -733,105 +425,190 @@
 
     <!-- 右側：エディタエリア -->
     <div class="editor-pane">
-      <div class="color-settings">
-        <div style="display:flex; gap:10px;">
-          <label>
-            <input type="color" id="color-primary" value="#3991e2" /> メイン
+      <!-- デバイス切り替え -->
+      <div class="device-switch-container">
+        <div class="device-toggle">
+          <label class="device-label active" id="lbl-device-pc">
+            <input type="radio" name="device" value="pc" checked onchange="changeDevice('pc')"> パソコン
           </label>
-          <label>
-            <input type="color" id="color-primary-hover" value="#1568b9" /> ホバー
-          </label>
-          <label>
-            <input type="color" id="color-progress-bg" value="#f1fbff" />
-            プログレスバー背景
-          </label>
-        </div>
-        <div>
-          <label>
-            サイズ: 
-            <select id="theme-size">
-              <option value="normal">通常</option>
-              <option value="small">小さめ</option>
-            </select>
+          <label class="device-label" id="lbl-device-sp">
+            <input type="radio" name="device" value="sp" onchange="changeDevice('sp')"> スマートフォン
           </label>
         </div>
       </div>
 
       <div class="editor-tabs">
-        <button class="tab-btn active" onclick="switchTab(event, 'gui')">
-          GUIエディタ
-        </button>
-        <button class="tab-btn" onclick="switchTab(event, 'io')">
-          データ入出力
-        </button>
+        <button class="tab-btn active" onclick="switchTab(event, 'gui')">GUIエディタ</button>
+        <button class="tab-btn" onclick="switchTab(event, 'design')">デザイン</button>
+        <button class="tab-btn" onclick="switchTab(event, 'io')">データ入出力</button>
       </div>
 
+      <!-- GUIエディタ タブ -->
       <div id="tab-gui" class="tab-content active">
         <div id="editor-container"></div>
       </div>
 
+      <!-- デザイン タブ -->
+      <div id="tab-design" class="tab-content">
+        <h3 style="margin-top:0; font-size:16px;">共通カラー</h3>
+        <div class="editor-flex-row">
+          <div class="editor-field"><label>メイン</label><input type="color" id="color-primary" oninput="updateCommonColor('primaryColor', this.value)"></div>
+          <div class="editor-field"><label>ホバー</label><input type="color" id="color-primary-hover" oninput="updateCommonColor('primaryHoverColor', this.value)"></div>
+          <div class="editor-field"><label>プログレス背景</label><input type="color" id="color-progress-bg" oninput="updateCommonColor('progressBgColor', this.value)"></div>
+        </div>
+
+        <hr style="border:none; border-top:1px solid #444; margin:20px 0;">
+        
+        <h3 style="font-size:16px; margin-bottom:10px;">サイズ設定 (<span id="design-device-name">パソコン</span>)</h3>
+        <p style="font-size: 12px; color: #aaa; margin-top: 0">現在選択中のデバイスに対する設定です。</p>
+        
+        <div class="editor-field">
+          <label>サイズのプリセット</label>
+          <select id="size-preset" onchange="changeSizePreset(this.value)">
+            <option value="normal">普通</option>
+            <option value="small">小さめ</option>
+            <option value="custom">カスタム</option>
+          </select>
+        </div>
+        <div id="custom-size-area" style="margin-top:20px; display:none;"></div>
+      </div>
+
+      <!-- データ入出力 タブ -->
       <div id="tab-io" class="tab-content">
         <p style="font-size: 12px; color: #aaa; margin-top: 0">
           オブジェクトを貼り付けて「読み込み」を押すか、エディタの状態を「書き出し」できます。
         </p>
-        <textarea
-          id="io-textarea"
-          placeholder="ここに form-content.js のようなオブジェクトを貼り付けます"
-        ></textarea>
+        <textarea id="io-textarea" placeholder="ここにオブジェクトを貼り付けます"></textarea>
         <div class="io-actions">
-          <button
-            class="btn-sm btn-primary"
-            style="flex: 1; padding: 12px"
-            onclick="importData()"
-          >
-            オブジェクトを読み込む
-          </button>
-          <button
-            class="btn-sm btn-add"
-            style="flex: 1; margin-top: 0; padding: 12px"
-            onclick="exportData()"
-          >
-            オブジェクトを書き出す
-          </button>
+          <button class="btn-sm btn-primary" style="flex: 1; padding: 12px" onclick="importData()">読み込む</button>
+          <button class="btn-sm btn-add" style="flex: 1; margin-top: 0; padding: 12px" onclick="exportData()">書き出す</button>
         </div>
       </div>
     </div>
 
     <script>
+      let currentDevice = 'pc'; // 'pc' or 'sp'
       let formData = [];
       let currentStepIndex = 0;
+
+      // サイズプロパティの定義と下限/上限
+      const SIZE_LIMITS = {
+        badgeFontSize: { min: 10, max: 16, label: '必須/任意バッジのフォントサイズ' },
+        badgeWidth: { min: 46, max: 62, label: '必須/任意バッジの幅' },
+        badgeHeight: { min: 22, max: 32, label: '必須/任意バッジの高さ' },
+        labelFontSize: { min: 16, max: 22, label: '見出しのフォントサイズ' },
+        hintFontSize: { min: 10, max: 16, label: '補足(ヒント)のフォントサイズ' },
+        checkbleLabelMinHeight: { min: 44, max: 62, label: 'ラジオ/チェックの最小高さ' },
+        checkbleLabelPadding: { min: 6, max: 18, label: 'ラジオ/チェックの余白' },
+        fieldMinHeight: { min: 44, max: 62, label: '入力欄の最小高さ' },
+        fieldMaxHeight: { min: 44, max: 62, label: '入力欄の最大高さ' },
+        fieldFontSize: { min: 13, max: 20, label: '入力文字のサイズ' },
+        prefixSuffixFontSize: { min: 10, max: 18, label: '接頭辞/接尾辞のフォントサイズ' },
+        prefixSuffixMargin: { min: 2, max: 10, label: '接頭辞/接尾辞の余白(左右)' }
+      };
+
+      const PRESETS = {
+        normal: {
+          badgeFontSize: 14, badgeWidth: 60, badgeHeight: 30,
+          labelFontSize: 20, hintFontSize: 14,
+          checkbleLabelMinHeight: 60, checkbleLabelPadding: 16,
+          fieldMinHeight: 60, fieldMaxHeight: 60, fieldFontSize: 18,
+          prefixSuffixFontSize: 16, prefixSuffixMargin: 8
+        },
+        small: {
+          badgeFontSize: 12, badgeWidth: 48, badgeHeight: 24,
+          labelFontSize: 18, hintFontSize: 12,
+          checkbleLabelMinHeight: 46, checkbleLabelPadding: 8,
+          fieldMinHeight: 46, fieldMaxHeight: 46, fieldFontSize: 15,
+          prefixSuffixFontSize: 12, prefixSuffixMargin: 4
+        }
+      };
+
+      let themeData = {
+        primaryColor: "#3991e2",
+        primaryHoverColor: "#1568b9",
+        progressBgColor: "#f1fbff",
+        pc: { sizePreset: "normal", ...PRESETS.normal },
+        sp: { sizePreset: "small", ...PRESETS.small }
+      };
 
       const editorContainer = document.getElementById('editor-container');
       const formContainer = document.getElementById('form-container');
 
-      // ============== テーマ反映関数 ==============
-      function applyTheme(theme) {
-        if (theme.primaryColor) {
-          document.documentElement.style.setProperty('--primary-color', theme.primaryColor);
-          document.getElementById('color-primary').value = theme.primaryColor;
-          updateValidationMarkColor(theme.primaryColor);
-        }
-        if (theme.primaryHoverColor) {
-          document.documentElement.style.setProperty('--primary-hover-color', theme.primaryHoverColor);
-          document.getElementById('color-primary-hover').value = theme.primaryHoverColor;
-        }
-        if (theme.progressBgColor) {
-          document.documentElement.style.setProperty('--progress-bg-color', theme.progressBgColor);
-          document.getElementById('color-progress-bg').value = theme.progressBgColor;
-        }
-        // サイズの反映
-        if (theme.size) {
-          document.getElementById('theme-size').value = theme.size;
-          if (theme.size === 'small') {
-            formContainer.classList.add('theme-small');
-          } else {
-            formContainer.classList.remove('theme-small');
-          }
+      // ============== デバイス切り替え ==============
+      function changeDevice(device) {
+        currentDevice = device;
+        // ラジオボタンの見た目更新
+        document.getElementById('lbl-device-pc').classList.toggle('active', device === 'pc');
+        document.getElementById('lbl-device-sp').classList.toggle('active', device === 'sp');
+        
+        // プレビュー側のクラス制御
+        const previewPane = document.querySelector('.preview-pane');
+        if (device === 'sp') {
+          formContainer.classList.remove('pc-mode');
+          formContainer.classList.add('sp-mode');
+          previewPane.classList.remove('pc-mode');
+          previewPane.classList.add('sp-mode');
         } else {
-          // デフォルトは normal
-          document.getElementById('theme-size').value = 'normal';
-          formContainer.classList.remove('theme-small');
+          formContainer.classList.remove('sp-mode');
+          formContainer.classList.add('pc-mode');
+          previewPane.classList.remove('sp-mode');
+          previewPane.classList.add('pc-mode');
         }
+
+        applyThemeStyles();
+        renderEditor();
+        generateForm();
+        renderDesignTab();
+      }
+
+      // ============== タブ切り替え ==============
+      function switchTab(e, tabId) {
+        document.querySelectorAll('.tab-btn').forEach((btn) => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach((content) => content.classList.remove('active'));
+        if (e && e.target) e.target.classList.add('active');
+        document.getElementById('tab-' + tabId).classList.add('active');
+        if(tabId === 'design') {
+          renderDesignTab();
+        }
+      }
+
+      // ============== テーマの適用 (CSS変数へ展開) ==============
+      function applyThemeStyles() {
+        const root = document.documentElement;
+        
+        // 共通カラー
+        root.style.setProperty('--primary-color', themeData.primaryColor);
+        root.style.setProperty('--primary-hover-color', themeData.primaryHoverColor);
+        root.style.setProperty('--progress-bg-color', themeData.progressBgColor);
+        document.getElementById('color-primary').value = themeData.primaryColor;
+        document.getElementById('color-primary-hover').value = themeData.primaryHoverColor;
+        document.getElementById('color-progress-bg').value = themeData.progressBgColor;
+        updateValidationMarkColor(themeData.primaryColor);
+
+        // デバイス別サイズ
+        const sz = themeData[currentDevice];
+        root.style.setProperty('--badge-font-size', sz.badgeFontSize + 'px');
+        root.style.setProperty('--badge-width', sz.badgeWidth + 'px');
+        root.style.setProperty('--badge-height', sz.badgeHeight + 'px');
+        root.style.setProperty('--label-font-size', sz.labelFontSize + 'px');
+        root.style.setProperty('--hint-font-size', sz.hintFontSize + 'px');
+        root.style.setProperty('--check-label-min-height', sz.checkbleLabelMinHeight + 'px');
+        root.style.setProperty('--check-label-padding', sz.checkbleLabelPadding + 'px');
+        root.style.setProperty('--field-min-height', sz.fieldMinHeight + 'px');
+        root.style.setProperty('--field-max-height', sz.fieldMaxHeight + 'px');
+        root.style.setProperty('--field-font-size', sz.fieldFontSize + 'px');
+        root.style.setProperty('--prefix-suffix-font-size', sz.prefixSuffixFontSize + 'px');
+        root.style.setProperty('--prefix-suffix-margin', sz.prefixSuffixMargin + 'px');
+
+        // 各step-contentの幅切り替え
+        Array.from(document.querySelectorAll('.step-content')).forEach(el => {
+          if(currentDevice === 'sp') {
+            el.classList.remove('pc-mode'); el.classList.add('sp-mode');
+          } else {
+            el.classList.remove('sp-mode'); el.classList.add('pc-mode');
+          }
+        });
       }
 
       function updateValidationMarkColor(hexColor) {
@@ -842,41 +619,58 @@
           style.id = 'dynamic-color-style';
           document.head.appendChild(style);
         }
-        style.innerHTML = `
-          .validation-mark.is-valid::after {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23${hex}' d='M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z'/%3E%3C/svg%3E");
-          }
-        `;
+        style.innerHTML = `.validation-mark.is-valid::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23${hex}' d='M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z'/%3E%3C/svg%3E"); }`;
       }
 
-      // ============== カラー＆サイズ変更機能 ==============
-      document.getElementById('color-primary').addEventListener('input', function (e) {
-        document.documentElement.style.setProperty('--primary-color', e.target.value);
-        updateValidationMarkColor(e.target.value);
-      });
+      function updateCommonColor(key, value) {
+        themeData[key] = value;
+        applyThemeStyles();
+      }
 
-      document.getElementById('color-primary-hover').addEventListener('input', function (e) {
-        document.documentElement.style.setProperty('--primary-hover-color', e.target.value);
-      });
+      // ============== デザインタブ (サイズ制御) ==============
+      function renderDesignTab() {
+        document.getElementById('design-device-name').innerText = currentDevice === 'pc' ? 'パソコン' : 'スマートフォン';
+        const sz = themeData[currentDevice];
+        document.getElementById('size-preset').value = sz.sizePreset;
 
-      document.getElementById('color-progress-bg').addEventListener('input', function (e) {
-        document.documentElement.style.setProperty('--progress-bg-color', e.target.value);
-      });
-
-      document.getElementById('theme-size').addEventListener('change', function (e) {
-        if (e.target.value === 'small') {
-          formContainer.classList.add('theme-small');
+        const customArea = document.getElementById('custom-size-area');
+        if (sz.sizePreset === 'custom') {
+          let html = '';
+          Object.keys(SIZE_LIMITS).forEach(key => {
+            const lim = SIZE_LIMITS[key];
+            const val = sz[key] || PRESETS.normal[key]; // 未定義時はnormalの値をフォールバック
+            html += `
+              <div class="editor-field" style="margin-bottom:12px; background:#2a2a2a; padding:10px; border-radius:4px; border:1px solid #444;">
+                <label style="display:flex; justify-content:space-between; margin-bottom:6px; color:#ddd;">
+                  <span>${lim.label}</span>
+                  <span id="val_${key}">${val}px</span>
+                </label>
+                <input type="range" min="${lim.min}" max="${lim.max}" value="${val}" 
+                       oninput="updateCustomSize('${key}', this.value)">
+              </div>
+            `;
+          });
+          customArea.innerHTML = html;
+          customArea.style.display = 'block';
         } else {
-          formContainer.classList.remove('theme-small');
+          customArea.style.display = 'none';
         }
-      });
+      }
 
-      // ============== タブ切り替え ==============
-      function switchTab(e, tabId) {
-        document.querySelectorAll('.tab-btn').forEach((btn) => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach((content) => content.classList.remove('active'));
-        if (e && e.target) e.target.classList.add('active');
-        document.getElementById('tab-' + tabId).classList.add('active');
+      function changeSizePreset(val) {
+        themeData[currentDevice].sizePreset = val;
+        if (val !== 'custom') {
+          // プリセット値を反映
+          Object.assign(themeData[currentDevice], PRESETS[val]);
+        }
+        applyThemeStyles();
+        renderDesignTab();
+      }
+
+      function updateCustomSize(key, val) {
+        document.getElementById('val_' + key).innerText = val + 'px';
+        themeData[currentDevice][key] = Number(val);
+        applyThemeStyles();
       }
 
       // ============== データの正規化 (自動整理) ==============
@@ -887,16 +681,12 @@
           stepsMap[item.step].push(item);
         });
 
-        const sortedSteps = Object.keys(stepsMap)
-          .map(Number)
-          .sort((a, b) => a - b);
+        const sortedSteps = Object.keys(stepsMap).map(Number).sort((a, b) => a - b);
         let newFormData = [];
         let newStepNum = 1;
 
         sortedSteps.forEach((oldStep) => {
-          const items = stepsMap[oldStep].sort(
-            (a, b) => (a.order || 0) - (b.order || 0),
-          );
+          const items = stepsMap[oldStep].sort((a, b) => (a.order || 0) - (b.order || 0));
           items.forEach((item, index) => {
             item.step = newStepNum;
             item.order = index + 1;
@@ -906,7 +696,6 @@
         });
 
         formData = newFormData;
-
         const totalSteps = [...new Set(formData.map((d) => d.step))].length;
         if (currentStepIndex >= totalSteps) {
           currentStepIndex = Math.max(0, totalSteps - 1);
@@ -916,23 +705,23 @@
       // ============== データ入出力 ==============
       function importData() {
         const rawVal = document.getElementById('io-textarea').value.trim();
-        if (!rawVal) {
-          alert('データが入力されていません');
-          return;
-        }
+        if (!rawVal) { alert('データが入力されていません'); return; }
         try {
           let data = new Function('return ' + rawVal)();
           let importedSteps = [];
-          
           if (Array.isArray(data)) {
             importedSteps = data;
-          } else if (Array.isArray(data[0])) {
-            importedSteps = data[0];
           } else if (data.steps) {
             importedSteps = data.steps;
-            if (data.theme) applyTheme(data.theme);
-          } else {
-            throw new Error('対応していないデータ形式です。');
+            if (data.theme) {
+              if (data.theme.pc) {
+                themeData = data.theme;
+              } else {
+                themeData.primaryColor = data.theme.primaryColor || themeData.primaryColor;
+                themeData.primaryHoverColor = data.theme.primaryHoverColor || themeData.primaryHoverColor;
+                themeData.progressBgColor = data.theme.progressBgColor || themeData.progressBgColor;
+              }
+            }
           }
 
           formData = importedSteps.map((item, idx) => ({
@@ -941,10 +730,21 @@
             step: item.step || 1,
             order: item.order || idx + 1,
             field: item.field || [],
+            pcFlexDirection: item.pcFlexDirection || item.flexDirection || 'row',
+            spFlexDirection: item.spFlexDirection || 'column',
+            pcFlexWrap: item.pcFlexWrap !== undefined ? item.pcFlexWrap : (item.flexWrap || false),
+            spFlexWrap: item.spFlexWrap !== undefined ? item.spFlexWrap : false,
           }));
+          
+          formData.forEach(item => {
+            item.field.forEach(f => {
+              if(f.width && !f.pcWidth) f.pcWidth = f.width;
+            });
+          });
 
           currentStepIndex = 0;
           normalizeData();
+          applyThemeStyles();
           renderEditor();
           generateForm();
           alert('正常に読み込みました。');
@@ -956,37 +756,23 @@
 
       function exportData() {
         normalizeData();
-        if (formData.length === 0) {
-          alert('出力するデータがありません。');
-          return;
-        }
+        if (formData.length === 0) { alert('出力するデータがありません。'); return; }
         const exportSteps = formData.map((item) => {
-          const { id, ...rest } = item;
+          const { id, flexDirection, flexWrap, ...rest } = item;
           return rest;
         });
-
         exportSteps.sort((a, b) => {
           if (a.step !== b.step) return a.step - b.step;
           return a.order - b.order;
         });
-
-        const exportObj = {
-          theme: {
-            primaryColor: document.getElementById('color-primary').value,
-            primaryHoverColor: document.getElementById('color-primary-hover').value,
-            progressBgColor: document.getElementById('color-progress-bg').value,
-            size: document.getElementById('theme-size').value // ★サイズ情報をエクスポート
-          },
-          steps: exportSteps
-        };
-
+        const exportObj = { theme: themeData, steps: exportSteps };
         let jsonStr = JSON.stringify(exportObj, null, 2);
         let jsObjStr = jsonStr.replace(/"([^"]+)":/g, '$1:');
         document.getElementById('io-textarea').value = jsObjStr;
-        alert('エディタのデータを書き出しました。');
+        alert('データを書き出しました。');
       }
 
-      // ============== 右側：エディタの描画 ==============
+      // ============== GUIエディタの描画 ==============
       function renderEditor() {
         editorContainer.innerHTML = '';
         const stepsData = {};
@@ -995,14 +781,11 @@
           stepsData[item.step].push(item);
         });
 
-        const stepKeys = Object.keys(stepsData)
-          .map(Number)
-          .sort((a, b) => a - b);
+        const stepKeys = Object.keys(stepsData).map(Number).sort((a, b) => a - b);
         const maxStep = stepKeys.length > 0 ? Math.max(...stepKeys) : 0;
 
         if (stepKeys.length === 0) {
-          editorContainer.innerHTML =
-            '<p style="color:#aaa; text-align:center;">ステップがありません。「新しいステップを追加」を押してください。</p>';
+          editorContainer.innerHTML = '<p style="color:#aaa; text-align:center;">ステップがありません。「新しいステップを追加」を押してください。</p>';
         }
 
         const generateStepOptions = (currentStep) => {
@@ -1014,24 +797,23 @@
           return optionsHtml;
         };
 
+        const fdKey = currentDevice === 'pc' ? 'pcFlexDirection' : 'spFlexDirection';
+        const fwKey = currentDevice === 'pc' ? 'pcFlexWrap' : 'spFlexWrap';
+        const wKey  = currentDevice === 'pc' ? 'pcWidth' : 'spWidth';
+
         stepKeys.forEach((step, index) => {
           const stepCard = document.createElement('div');
           stepCard.className = `step-card ${index === currentStepIndex ? 'active' : ''}`;
 
           const header = document.createElement('div');
           header.className = 'step-header';
-          header.onclick = () => {
-            currentStepIndex = index;
-            updateNavigation();
-          };
-
+          header.onclick = () => { currentStepIndex = index; updateNavigation(); };
           header.innerHTML = `
-        <div class="step-title-area">
-          <span class="accordion-icon">▶</span>
-          <span>ステップ ${step}</span>
-        </div>
-        <button class="btn-sm btn-danger" onclick="event.stopPropagation(); deleteStep(${step})">ステップ削除</button>
-      `;
+            <div class="step-title-area">
+              <span class="accordion-icon">▶</span><span>ステップ ${step}</span>
+            </div>
+            <button class="btn-sm btn-danger" onclick="event.stopPropagation(); deleteStep(${step})">ステップ削除</button>
+          `;
           stepCard.appendChild(header);
 
           const body = document.createElement('div');
@@ -1041,141 +823,106 @@
           itemsInStep.forEach((item, itemIndex) => {
             const qCard = document.createElement('div');
             qCard.className = 'question-card';
-
             const isFirst = itemIndex === 0;
             const isLast = itemIndex === itemsInStep.length - 1;
 
+            const currentFd = item[fdKey] || (currentDevice === 'pc' ? 'row' : 'column');
+            const currentFw = item[fwKey] || false;
+
             let html = `
-          <div class="order-controls">
-            <div>
-              <span style="font-size:12px; color:#aaa; margin-right:8px;">表示順: ${item.order}</span>
-              <button class="btn-sm btn-control" onclick="moveOrder('${item.id}', -1)" ${isFirst ? 'disabled' : ''}>↑ 上へ</button>
-              <button class="btn-sm btn-control" onclick="moveOrder('${item.id}', 1)" ${isLast ? 'disabled' : ''}>↓ 下へ</button>
-            </div>
-            <div>
-              <span style="font-size:12px; color:#aaa; margin-right:8px;">移動先:</span>
-              <select onchange="changeStep('${item.id}', this.value)">
-                ${generateStepOptions(item.step)}
-              </select>
-            </div>
-          </div>
-          
-          <div class="editor-field">
-            <label>質問の見出し</label>
-            <input type="text" value="${item.label || ''}" oninput="updateData('${item.id}', 'label', this.value)" placeholder="例：お名前">
-          </div>
-          <div class="editor-field">
-            <label>補足（ヒント）</label>
-            <input type="text" value="${item.hint || ''}" oninput="updateData('${item.id}', 'hint', this.value)" placeholder="例：ハイフンなしで入力してください">
-          </div>
-          <div class="editor-flex-row">
-            <div class="editor-field editor-field-inline" style="margin-top:15px;">
-              <input type="checkbox" id="req_${item.id}" ${item.isRequired ? 'checked' : ''} onchange="updateData('${item.id}', 'isRequired', this.checked)">
-              <label for="req_${item.id}" style="margin:0;">必須にする</label>
-            </div>
-            <div class="editor-field editor-field-inline" style="margin-top:15px;">
-              <input type="checkbox" id="wrap_${item.id}" ${item.flexWrap ? 'checked' : ''} onchange="updateData('${item.id}', 'flexWrap', this.checked)">
-              <label for="wrap_${item.id}" style="margin:0;">改行する</label>
-            </div>
-            <div class="editor-field">
-              <label>入力欄のレイアウト</label>
-              <select onchange="updateData('${item.id}', 'flexDirection', this.value)">
-                <option value="row" ${item.flexDirection !== 'column' ? 'selected' : ''}>横並び</option>
-                <option value="column" ${item.flexDirection === 'column' ? 'selected' : ''}>縦並び</option>
-              </select>
-            </div>
-          </div>
-          <hr style="border:none; border-top:1px solid #444; margin:15px 0;">
-        `;
+              <div class="order-controls">
+                <div>
+                  <span style="font-size:12px; color:#aaa; margin-right:8px;">表示順: ${item.order}</span>
+                  <button class="btn-sm btn-control" onclick="moveOrder('${item.id}', -1)" ${isFirst ? 'disabled' : ''}>↑ 上へ</button>
+                  <button class="btn-sm btn-control" onclick="moveOrder('${item.id}', 1)" ${isLast ? 'disabled' : ''}>↓ 下へ</button>
+                </div>
+                <div>
+                  <span style="font-size:12px; color:#aaa; margin-right:8px;">移動先:</span>
+                  <select onchange="changeStep('${item.id}', this.value)">${generateStepOptions(item.step)}</select>
+                </div>
+              </div>
+              <div class="editor-field"><label>質問の見出し</label>
+                <input type="text" value="${item.label || ''}" oninput="updateData('${item.id}', 'label', this.value)" placeholder="例：お名前">
+              </div>
+              <div class="editor-field"><label>補足（ヒント）</label>
+                <input type="text" value="${item.hint || ''}" oninput="updateData('${item.id}', 'hint', this.value)">
+              </div>
+              <div class="editor-flex-row">
+                <div class="editor-field editor-field-inline" style="margin-top:15px;">
+                  <input type="checkbox" id="req_${item.id}" ${item.isRequired ? 'checked' : ''} onchange="updateData('${item.id}', 'isRequired', this.checked)">
+                  <label for="req_${item.id}" style="margin:0;">必須</label>
+                </div>
+                <div class="editor-field editor-field-inline" style="margin-top:15px;">
+                  <input type="checkbox" id="wrap_${item.id}" ${currentFw ? 'checked' : ''} onchange="updateData('${item.id}', '${fwKey}', this.checked)">
+                  <label for="wrap_${item.id}" style="margin:0;">改行</label>
+                </div>
+                <div class="editor-field"><label>レイアウト (${currentDevice.toUpperCase()})</label>
+                  <select onchange="updateData('${item.id}', '${fdKey}', this.value)">
+                    <option value="row" ${currentFd === 'row' ? 'selected' : ''}>横並び</option>
+                    <option value="column" ${currentFd === 'column' ? 'selected' : ''}>縦並び</option>
+                  </select>
+                </div>
+              </div>
+              <hr style="border:none; border-top:1px solid #444; margin:15px 0;">
+            `;
 
             (item.field || []).forEach((f, fIndex) => {
               const isMulti = ['radio', 'checkbox', 'select'].includes(f.type);
               const optionsStr = (f.option || []).join(',');
+              const currentWidth = f[wKey];
 
               html += `
-            <div class="sub-field-card">
-              <div class="sub-field-header">
-                <span>入力欄 ${fIndex + 1}</span>
-                ${item.field.length > 1 ? `<button class="btn-sm btn-danger" style="padding:2px 6px;" onclick="deleteSubField('${item.id}', ${fIndex})">削除</button>` : ''}
-              </div>
-              
-              <div class="editor-field">
-                <label>タイプ</label>
-                <select onchange="updateSubField('${item.id}', ${fIndex}, 'type', this.value)">
-                  <option value="text" ${f.type === 'text' ? 'selected' : ''}>テキスト</option>
-                  <option value="textarea" ${f.type === 'textarea' ? 'selected' : ''}>テキストエリア</option>
-                  <option value="radio" ${f.type === 'radio' ? 'selected' : ''}>ラジオボタン</option>
-                  <option value="checkbox" ${f.type === 'checkbox' ? 'selected' : ''}>チェックボックス</option>
-                  <option value="select" ${f.type === 'select' ? 'selected' : ''}>プルダウン</option>
-                </select>
-              </div>
-
-              ${
-                !isMulti
-                  ? `
-              <div class="editor-field">
-                <label>プレースホルダー</label>
-                <input type="text" value="${f.placeholder || ''}" oninput="updateSubField('${item.id}', ${fIndex}, 'placeholder', this.value)" placeholder="例：山田 太郎">
-              </div>
-              `
-                  : ''
-              }
-
-              <div class="editor-flex-row">
-                <div class="editor-field">
-                  <label>接頭辞 (prefix)</label>
-                  <input type="text" value="${f.prefix || ''}" oninput="updateSubField('${item.id}', ${fIndex}, 'prefix', this.value)" placeholder="例：姓">
+                <div class="sub-field-card">
+                  <div class="sub-field-header">
+                    <span>入力欄 ${fIndex + 1}</span>
+                    ${item.field.length > 1 ? `<button class="btn-sm btn-danger" style="padding:2px 6px;" onclick="deleteSubField('${item.id}', ${fIndex})">削除</button>` : ''}
+                  </div>
+                  <div class="editor-field"><label>タイプ</label>
+                    <select onchange="updateSubField('${item.id}', ${fIndex}, 'type', this.value)">
+                      <option value="text" ${f.type === 'text' ? 'selected' : ''}>テキスト</option>
+                      <option value="textarea" ${f.type === 'textarea' ? 'selected' : ''}>テキストエリア</option>
+                      <option value="radio" ${f.type === 'radio' ? 'selected' : ''}>ラジオボタン</option>
+                      <option value="checkbox" ${f.type === 'checkbox' ? 'selected' : ''}>チェックボックス</option>
+                      <option value="select" ${f.type === 'select' ? 'selected' : ''}>プルダウン</option>
+                    </select>
+                  </div>
+                  ${!isMulti ? `
+                  <div class="editor-field"><label>プレースホルダー</label>
+                    <input type="text" value="${f.placeholder || ''}" oninput="updateSubField('${item.id}', ${fIndex}, 'placeholder', this.value)">
+                  </div>` : ''}
+                  <div class="editor-flex-row">
+                    <div class="editor-field"><label>接頭辞 (prefix)</label><input type="text" value="${f.prefix || ''}" oninput="updateSubField('${item.id}', ${fIndex}, 'prefix', this.value)"></div>
+                    <div class="editor-field"><label>接尾辞 (suffix)</label><input type="text" value="${f.suffix || ''}" oninput="updateSubField('${item.id}', ${fIndex}, 'suffix', this.value)"></div>
+                  </div>
+                  ${isMulti ? `
+                  <div class="editor-field"><label>選択肢 (カンマ区切り)</label>
+                    <input type="text" value="${optionsStr}" oninput="updateSubFieldOptions('${item.id}', ${fIndex}, this.value)">
+                  </div>` : ''}
+                  <div class="editor-field">
+                    <label style="display:flex; justify-content:space-between; align-items:center;">
+                      <span>幅(${currentDevice.toUpperCase()}) px: <span id="w_${item.id}_${fIndex}">${currentWidth ? currentWidth + 'px' : '自動'}</span></span>
+                      ${currentWidth ? `<button class="btn-sm btn-control" style="padding:2px 6px;" onclick="updateSubField('${item.id}', ${fIndex}, '${wKey}', null)">自動</button>` : ''}
+                    </label>
+                    <input type="range" min="100" max="599" value="${currentWidth || 599}" oninput="document.getElementById('w_${item.id}_${fIndex}').innerText = this.value + 'px'; updateSubField('${item.id}', ${fIndex}, '${wKey}', Number(this.value))">
+                  </div>
                 </div>
-                <div class="editor-field">
-                  <label>接尾辞 (suffix)</label>
-                  <input type="text" value="${f.suffix || ''}" oninput="updateSubField('${item.id}', ${fIndex}, 'suffix', this.value)" placeholder="例：円">
-                </div>
-              </div>
-
-              ${
-                isMulti
-                  ? `
-              <div class="editor-field">
-                <label>選択肢 (カンマ区切り)</label>
-                <input type="text" value="${optionsStr}" oninput="updateSubFieldOptions('${item.id}', ${fIndex}, this.value)" placeholder="例：東京,大阪,福岡">
-              </div>
-              `
-                  : ''
-              }
-
-              <!-- ★★★ 幅の設定スライダー ★★★ -->
-              <div class="editor-field">
-                <label style="display:flex; justify-content:space-between; align-items:center;">
-                  <span>入力欄の幅 (px): <span id="width_val_${item.id}_${fIndex}">${f.width ? f.width + 'px' : '自動 (最大)'}</span></span>
-                  ${f.width ? `<button class="btn-sm btn-control" style="padding:2px 6px;" onclick="updateSubField('${item.id}', ${fIndex}, 'width', null)">自動に戻す</button>` : ''}
-                </label>
-                <input type="range" min="100" max="599" value="${f.width || 599}" oninput="document.getElementById('width_val_${item.id}_${fIndex}').innerText = this.value + 'px'; updateSubField('${item.id}', ${fIndex}, 'width', Number(this.value))">
-              </div>
-            </div>
-          `;
+              `;
             });
-
             html += `
-          <button class="btn-sm btn-add-sub" onclick="addSubField('${item.id}')">＋ この質問に入力欄を追加</button>
-          <div style="text-align: right; margin-top: 15px;">
-            <button class="btn-sm btn-danger" onclick="deleteQuestion('${item.id}')">この質問ごと削除</button>
-          </div>
-        `;
-
+              <button class="btn-sm btn-add-sub" onclick="addSubField('${item.id}')">＋ この質問に入力欄を追加</button>
+              <div style="text-align: right; margin-top: 15px;"><button class="btn-sm btn-danger" onclick="deleteQuestion('${item.id}')">この質問ごと削除</button></div>
+            `;
             qCard.innerHTML = html;
             body.appendChild(qCard);
           });
-
           const addQBtn = document.createElement('button');
           addQBtn.className = 'btn-sm btn-add';
           addQBtn.innerText = '+ このステップに質問を追加';
           addQBtn.onclick = () => addQuestion(step);
           body.appendChild(addQBtn);
-
           stepCard.appendChild(body);
           editorContainer.appendChild(stepCard);
         });
-
         const addStepBtn = document.createElement('button');
         addStepBtn.className = 'btn-sm btn-add-step';
         addStepBtn.innerText = '+ 新しいステップを追加';
@@ -1183,187 +930,97 @@
         editorContainer.appendChild(addStepBtn);
       }
 
-      // ============== 順番・ステップの移動処理 ==============
-      function moveOrder(id, direction) {
-        const itemIndex = formData.findIndex((d) => d.id === id);
-        if (itemIndex === -1) return;
-
-        const item = formData[itemIndex];
-        const stepItems = formData
-          .filter((d) => d.step === item.step)
-          .sort((a, b) => a.order - b.order);
-        const currentIdx = stepItems.findIndex((d) => d.id === id);
-
-        if (direction === -1 && currentIdx > 0) {
-          const prevItem = stepItems[currentIdx - 1];
-          const temp = item.order;
-          item.order = prevItem.order;
-          prevItem.order = temp;
-        } else if (direction === 1 && currentIdx < stepItems.length - 1) {
-          const nextItem = stepItems[currentIdx + 1];
-          const temp = item.order;
-          item.order = nextItem.order;
-          nextItem.order = temp;
+      function moveOrder(id, dir) {
+        const idx = formData.findIndex((d) => d.id === id);
+        if (idx === -1) return;
+        const item = formData[idx];
+        const stepItems = formData.filter((d) => d.step === item.step).sort((a, b) => a.order - b.order);
+        const curIdx = stepItems.findIndex((d) => d.id === id);
+        if (dir === -1 && curIdx > 0) {
+          const prev = stepItems[curIdx - 1]; const t = item.order; item.order = prev.order; prev.order = t;
+        } else if (dir === 1 && curIdx < stepItems.length - 1) {
+          const nxt = stepItems[curIdx + 1]; const t = item.order; item.order = nxt.order; nxt.order = t;
         }
-
-        normalizeData();
-        renderEditor();
-        generateForm();
+        normalizeData(); renderEditor(); generateForm();
       }
-
-      function changeStep(id, newStepStr) {
+      function changeStep(id, val) {
         const item = formData.find((d) => d.id === id);
         if (item) {
-          const targetStep = parseInt(newStepStr, 10);
-          item.step = targetStep;
-
-          const targetStepItems = formData.filter((d) => d.step === targetStep);
-          const maxOrder =
-            targetStepItems.length > 0
-              ? Math.max(...targetStepItems.map((d) => d.order || 0))
-              : 0;
-          item.order = maxOrder + 1;
-
-          normalizeData();
-          renderEditor();
-          generateForm();
+          item.step = parseInt(val, 10);
+          const trgItems = formData.filter((d) => d.step === item.step);
+          item.order = (trgItems.length > 0 ? Math.max(...trgItems.map(d => d.order || 0)) : 0) + 1;
+          normalizeData(); renderEditor(); generateForm();
         }
       }
-
-      // ============== データ操作関数 ==============
-      function updateData(id, key, value) {
+      function updateData(id, key, val) {
         const item = formData.find((d) => d.id === id);
-        if (item) {
-          item[key] = value;
-          generateForm();
-        }
+        if (item) { item[key] = val; generateForm(); }
       }
-
-      function updateSubField(qId, fIndex, key, value) {
+      function updateSubField(qId, fIndex, key, val) {
         const item = formData.find((d) => d.id === qId);
         if (item && item.field[fIndex]) {
-          if (value === null) {
-            delete item.field[fIndex][key]; // 幅を「自動に戻す」場合
-          } else {
-            item.field[fIndex][key] = value;
-          }
-          if (
-            key === 'type' &&
-            ['radio', 'checkbox', 'select'].includes(value) &&
-            !item.field[fIndex].option
-          ) {
+          if (val === null) delete item.field[fIndex][key]; else item.field[fIndex][key] = val;
+          if (key === 'type' && ['radio', 'checkbox', 'select'].includes(val) && !item.field[fIndex].option) {
             item.field[fIndex].option = ['選択肢1', '選択肢2'];
           }
-          
-          if (key === 'type' || value === null) renderEditor();
+          if (key === 'type' || val === null) renderEditor();
           generateForm();
         }
       }
-
-      function updateSubFieldOptions(qId, fIndex, value) {
+      function updateSubFieldOptions(qId, fIndex, val) {
         const item = formData.find((d) => d.id === qId);
         if (item && item.field[fIndex]) {
-          item.field[fIndex].option = value
-            .split(',')
-            .map((s) => s.trim())
-            .filter((s) => s);
+          item.field[fIndex].option = val.split(',').map((s) => s.trim()).filter((s) => s);
           generateForm();
         }
       }
-
       function addSubField(qId) {
         const item = formData.find((d) => d.id === qId);
         if (item) {
           if (!item.field) item.field = [];
-          item.field.push({
-            name: 'field_' + Date.now(),
-            type: 'text',
-            hasMark: true,
-          });
-          renderEditor();
-          generateForm();
+          item.field.push({ name: 'field_' + Date.now(), type: 'text', hasMark: true });
+          renderEditor(); generateForm();
         }
       }
-
       function deleteSubField(qId, fIndex) {
         const item = formData.find((d) => d.id === qId);
-        if (item && item.field) {
-          item.field.splice(fIndex, 1);
-          renderEditor();
-          generateForm();
-        }
+        if (item && item.field) { item.field.splice(fIndex, 1); renderEditor(); generateForm(); }
       }
-
       function addQuestion(stepNum) {
         const stepItems = formData.filter((d) => d.step === stepNum);
-        const maxOrder =
-          stepItems.length > 0
-            ? Math.max(...stepItems.map((d) => d.order || 0))
-            : 0;
+        const maxOrder = stepItems.length > 0 ? Math.max(...stepItems.map((d) => d.order || 0)) : 0;
         formData.push({
-          id: Date.now().toString(),
-          step: stepNum,
-          order: maxOrder + 1,
-          label: '新しい質問',
-          hint: '',
-          isRequired: true,
-          flexDirection: 'row',
-          flexWrap: false,
+          id: Date.now().toString(), step: stepNum, order: maxOrder + 1, label: '新しい質問', hint: '', isRequired: true,
+          pcFlexDirection: 'row', spFlexDirection: 'column', pcFlexWrap: false, spFlexWrap: false,
           field: [{ name: 'field_' + Date.now(), type: 'text', hasMark: true }],
         });
-        normalizeData();
-        renderEditor();
-        generateForm();
+        normalizeData(); renderEditor(); generateForm();
       }
-
-      function deleteQuestion(id) {
-        formData = formData.filter((d) => d.id !== id);
-        normalizeData();
-        renderEditor();
-        generateForm();
-      }
-
-      function deleteStep(stepNum) {
-        formData = formData.filter((d) => d.step !== stepNum);
-        normalizeData();
-        renderEditor();
-        generateForm();
-      }
+      function deleteQuestion(id) { formData = formData.filter((d) => d.id !== id); normalizeData(); renderEditor(); generateForm(); }
+      function deleteStep(stepNum) { formData = formData.filter((d) => d.step !== stepNum); normalizeData(); renderEditor(); generateForm(); }
 
       // ============== 左側：プレビューの描画 ==============
-
       function validateField(qData, groupEl, name, isInputEvent = false) {
         if (!name) return;
         const inputs = groupEl.querySelectorAll(`[name="${name}"]`);
         if (inputs.length === 0) return;
-
         const isRequired = qData.isRequired;
         let hasValue = false;
-
         if (inputs[0].type === 'radio' || inputs[0].type === 'checkbox') {
-          hasValue =
-            groupEl.querySelectorAll(`[name="${name}"]:checked`).length > 0;
+          hasValue = groupEl.querySelectorAll(`[name="${name}"]:checked`).length > 0;
           inputs.forEach((chk) => {
             const label = chk.closest('.check-radio-label');
             if (!label) return;
             label.classList.remove('is-valid', 'is-invalid');
-
-            if (isRequired && !hasValue && !isInputEvent) {
-              label.classList.add('is-invalid');
-            }
+            if (isRequired && !hasValue && !isInputEvent) label.classList.add('is-invalid');
           });
-        }
-        else {
+        } else {
           inputs.forEach((inputEl) => {
             hasValue = inputEl.value.trim() !== '';
             const wrapper = inputEl.closest('.field-wrapper');
-            const mark = wrapper
-              ? wrapper.querySelector('.validation-mark')
-              : null;
-
+            const mark = wrapper ? wrapper.querySelector('.validation-mark') : null;
             inputEl.classList.remove('is-valid', 'is-invalid');
             if (mark) mark.classList.remove('is-valid', 'is-invalid');
-
             if (hasValue) {
               inputEl.classList.add('is-valid');
               if (mark) mark.classList.add('is-valid');
@@ -1373,23 +1030,15 @@
             }
           });
         }
-
         const errorEl = groupEl.querySelector('.error-message');
         if (errorEl) {
-          if (!isInputEvent) {
-            errorEl.style.display = isRequired && !hasValue ? 'block' : 'none';
-          } else if (hasValue) {
-            errorEl.style.display = 'none';
-          }
+          if (!isInputEvent) errorEl.style.display = isRequired && !hasValue ? 'block' : 'none';
+          else if (hasValue) errorEl.style.display = 'none';
         }
       }
 
       function generateForm() {
-        if (formData.length === 0) {
-          formContainer.style.display = 'none';
-          return;
-        }
-
+        if (formData.length === 0) { formContainer.style.display = 'none'; return; }
         const wrapper = document.getElementById('form-steps-wrapper');
         wrapper.innerHTML = '';
         const stepsData = {};
@@ -1397,457 +1046,184 @@
           if (!stepsData[item.step]) stepsData[item.step] = [];
           stepsData[item.step].push(item);
         });
-
-        const stepKeys = Object.keys(stepsData)
-          .map(Number)
-          .sort((a, b) => a - b);
-
+        const stepKeys = Object.keys(stepsData).map(Number).sort((a, b) => a - b);
+        
         stepKeys.forEach((stepKey, index) => {
           const stepDiv = document.createElement('div');
-          stepDiv.className = `step-content`;
+          stepDiv.className = `step-content ${currentDevice === 'pc' ? 'pc-mode' : 'sp-mode'}`;
+          stepsData[stepKey].sort((a, b) => (a.order || 0) - (b.order || 0)).forEach((q) => {
+            const group = document.createElement('div'); group.className = 'form-group';
+            const header = document.createElement('div'); header.className = 'form-header';
+            const badge = document.createElement('span');
+            badge.className = `badge ${q.isRequired ? 'required' : 'optional'}`;
+            badge.innerText = q.isRequired ? '必須' : '任意';
+            header.appendChild(badge);
+            const label = document.createElement('span'); label.className = 'form-label'; label.innerText = q.label || ''; header.appendChild(label);
+            if (q.hint) {
+              const hint = document.createElement('div'); hint.className = 'form-hint'; hint.innerText = q.hint; header.appendChild(hint);
+            }
+            group.appendChild(header);
 
-          stepsData[stepKey]
-            .sort((a, b) => (a.order || 0) - (b.order || 0))
-            .forEach((q) => {
-              const group = document.createElement('div');
-              group.className = 'form-group';
+            const fieldsCont = document.createElement('div'); fieldsCont.className = 'fields-container';
+            
+            let fDir = currentDevice === 'pc' ? q.pcFlexDirection : q.spFlexDirection;
+            if(!fDir) fDir = currentDevice === 'pc' ? 'row' : 'column';
+            let fWrap = currentDevice === 'pc' ? q.pcFlexWrap : q.spFlexWrap;
+            fieldsCont.style.flexDirection = fDir;
+            fieldsCont.style.flexWrap = fWrap ? 'wrap' : 'nowrap';
 
-              const header = document.createElement('div');
-              header.className = 'form-header';
+            (q.field || []).forEach((f) => {
+              const wrapperEl = document.createElement('div'); wrapperEl.className = 'field-wrapper';
+              let currentWidth = currentDevice === 'pc' ? f.pcWidth : f.spWidth;
 
-              const badge = document.createElement('span');
-              badge.className = `badge ${q.isRequired ? 'required' : 'optional'}`;
-              badge.innerText = q.isRequired ? '必須' : '任意';
-              header.appendChild(badge);
-
-              const label = document.createElement('span');
-              label.className = 'form-label';
-              label.innerText = q.label || '';
-              header.appendChild(label);
-
-              if (q.hint) {
-                const hint = document.createElement('div');
-                hint.className = 'form-hint';
-                hint.innerText = q.hint;
-                header.appendChild(hint);
+              if (currentWidth && f.type !== 'radio' && f.type !== 'checkbox') {
+                wrapperEl.style.flex = 'none'; wrapperEl.style.width = currentWidth + 'px';
               }
-              group.appendChild(header);
+              if (f.prefix) {
+                const pre = document.createElement('span'); pre.className = 'prefix'; pre.innerText = f.prefix; wrapperEl.appendChild(pre);
+              }
 
-              const fieldsCont = document.createElement('div');
-              fieldsCont.className = 'fields-container';
-              fieldsCont.style.flexDirection =
-                q.flexDirection === 'column' ? 'column' : 'row';
-              fieldsCont.style.flexWrap = q.flexWrap ? 'wrap' : 'nowrap';
-
-              (q.field || []).forEach((f) => {
-                const wrapperEl = document.createElement('div');
-                wrapperEl.className = 'field-wrapper';
-
-                // ★★★ fieldごとの幅を適用 (radio/checkbox以外はここで親に適用) ★★★
-                if (f.width && f.type !== 'radio' && f.type !== 'checkbox') {
-                  wrapperEl.style.flex = 'none';
-                  wrapperEl.style.width = f.width + 'px';
+              let inputEl;
+              if (f.type === 'textarea') {
+                inputEl = document.createElement('textarea'); inputEl.className = 'form-textarea';
+                inputEl.name = f.name || ''; if (f.placeholder) inputEl.placeholder = f.placeholder;
+              } else if (f.type === 'select') {
+                inputEl = document.createElement('select'); inputEl.className = 'form-select';
+                inputEl.name = f.name || '';
+                const defaultOpt = document.createElement('option'); defaultOpt.innerText = '選択してください'; defaultOpt.value = ''; inputEl.appendChild(defaultOpt);
+                (f.option || []).forEach((optVal) => {
+                  const opt = document.createElement('option'); opt.value = optVal; opt.innerText = optVal; inputEl.appendChild(opt);
+                });
+              } else if (f.type === 'radio' || f.type === 'checkbox') {
+                const multiCont = document.createElement('div'); multiCont.className = 'multi-container';
+                multiCont.style.flexDirection = fDir; multiCont.style.flexWrap = fWrap ? 'wrap' : 'nowrap';
+                (f.option || []).forEach((optVal) => {
+                  const lbl = document.createElement('label'); lbl.className = 'check-radio-label';
+                  if (currentWidth) { lbl.style.flex = 'none'; lbl.style.width = currentWidth + 'px'; }
+                  const chk = document.createElement('input'); chk.type = f.type; chk.name = f.name || ''; chk.value = optVal;
+                  if (f.hasMark === false) chk.classList.add('no-mark');
+                  lbl.appendChild(chk); lbl.append(optVal); multiCont.appendChild(lbl);
+                  chk.addEventListener('blur', () => validateField(q, group, f.name));
+                  chk.addEventListener('change', () => validateField(q, group, f.name));
+                });
+                wrapperEl.appendChild(multiCont);
+              } else {
+                inputEl = document.createElement('input'); inputEl.className = 'form-input';
+                inputEl.type = f.type || 'text'; inputEl.name = f.name || '';
+                if (f.placeholder) inputEl.placeholder = f.placeholder;
+                if (f.hasMark) {
+                  inputEl.classList.add('has-mark');
+                  const mark = document.createElement('span'); mark.className = 'validation-mark'; wrapperEl.appendChild(mark);
                 }
+              }
 
-                if (f.prefix) {
-                  const pre = document.createElement('span');
-                  pre.className = 'prefix';
-                  pre.innerText = f.prefix;
-                  wrapperEl.appendChild(pre);
-                }
+              if (inputEl && f.type !== 'radio' && f.type !== 'checkbox') {
+                const mark = wrapperEl.querySelector('.validation-mark');
+                if (mark) wrapperEl.insertBefore(inputEl, mark); else wrapperEl.appendChild(inputEl);
+                inputEl.addEventListener('blur', () => validateField(q, group, f.name));
+                inputEl.addEventListener('input', () => validateField(q, group, f.name, true));
+                inputEl.addEventListener('change', () => validateField(q, group, f.name));
+              }
 
-                let inputEl;
-                if (f.type === 'textarea') {
-                  inputEl = document.createElement('textarea');
-                  inputEl.className = 'form-textarea';
-                  inputEl.name = f.name || '';
-                  if (f.placeholder) inputEl.placeholder = f.placeholder;
-                  inputEl.rows = 3;
-                } else if (f.type === 'select') {
-                  inputEl = document.createElement('select');
-                  inputEl.className = 'form-select';
-                  inputEl.name = f.name || '';
-                  const defaultOpt = document.createElement('option');
-                  defaultOpt.innerText = '選択してください';
-                  defaultOpt.value = '';
-                  inputEl.appendChild(defaultOpt);
-                  (f.option || []).forEach((optVal) => {
-                    const opt = document.createElement('option');
-                    opt.value = optVal;
-                    opt.innerText = optVal;
-                    inputEl.appendChild(opt);
-                  });
-                } else if (f.type === 'radio' || f.type === 'checkbox') {
-                  const multiCont = document.createElement('div');
-                  multiCont.className = 'multi-container';
-                  multiCont.style.flexDirection =
-                    q.flexDirection === 'column' ? 'column' : 'row';
-                  multiCont.style.flexWrap = q.flexWrap ? 'wrap' : 'nowrap';
-
-                  (f.option || []).forEach((optVal) => {
-                    const lbl = document.createElement('label');
-                    lbl.className = 'check-radio-label';
-                    
-                    // ★★★ radio/checkboxの場合は各選択肢(ラベル)に幅を直接適用 ★★★
-                    if (f.width) {
-                      lbl.style.flex = 'none';
-                      lbl.style.width = f.width + 'px';
-                    }
-
-                    const chk = document.createElement('input');
-                    chk.type = f.type;
-                    chk.name = f.name || '';
-                    chk.value = optVal;
-                    if (f.hasMark === false) chk.classList.add('no-mark');
-                    lbl.appendChild(chk);
-                    lbl.append(optVal);
-                    multiCont.appendChild(lbl);
-
-                    chk.addEventListener('blur', () =>
-                      validateField(q, group, f.name),
-                    );
-                    chk.addEventListener('change', () =>
-                      validateField(q, group, f.name),
-                    );
-                  });
-                  wrapperEl.appendChild(multiCont);
-                } else {
-                  inputEl = document.createElement('input');
-                  inputEl.className = 'form-input';
-                  inputEl.type = f.type || 'text';
-                  inputEl.name = f.name || '';
-                  if (f.placeholder) inputEl.placeholder = f.placeholder;
-
-                  if (f.hasMark) {
-                    inputEl.classList.add('has-mark');
-                    const mark = document.createElement('span');
-                    mark.className = 'validation-mark';
-                    wrapperEl.appendChild(mark);
-                  }
-                }
-
-                if (inputEl && f.type !== 'radio' && f.type !== 'checkbox') {
-                  const mark = wrapperEl.querySelector('.validation-mark');
-                  if (mark) {
-                    wrapperEl.insertBefore(inputEl, mark);
-                  } else {
-                    wrapperEl.appendChild(inputEl);
-                  }
-
-                  inputEl.addEventListener('blur', () =>
-                    validateField(q, group, f.name),
-                  );
-                  inputEl.addEventListener('input', () =>
-                    validateField(q, group, f.name, true),
-                  );
-                  inputEl.addEventListener('change', () =>
-                    validateField(q, group, f.name),
-                  );
-                }
-
-                if (f.suffix) {
-                  const suf = document.createElement('span');
-                  suf.className = 'suffix';
-                  suf.innerText = f.suffix;
-                  wrapperEl.appendChild(suf);
-                }
-
-                fieldsCont.appendChild(wrapperEl);
-              });
-
-              group.appendChild(fieldsCont);
-
-              const errorMsgText =
-                q.errorMessag || q.errorMessage || '必須項目です。';
-              const errorDiv = document.createElement('div');
-              errorDiv.className = 'error-message';
-              errorDiv.innerText = errorMsgText;
-              group.appendChild(errorDiv);
-
-              stepDiv.appendChild(group);
+              if (f.suffix) {
+                const suf = document.createElement('span'); suf.className = 'suffix'; suf.innerText = f.suffix; wrapperEl.appendChild(suf);
+              }
+              fieldsCont.appendChild(wrapperEl);
             });
+            group.appendChild(fieldsCont);
+            const errorDiv = document.createElement('div'); errorDiv.className = 'error-message'; errorDiv.innerText = q.errorMessag || '必須項目です。';
+            group.appendChild(errorDiv);
+            stepDiv.appendChild(group);
+          });
           wrapper.appendChild(stepDiv);
         });
 
         formContainer.style.display = 'block';
-
-        setTimeout(() => {
-          updateNavigation(stepKeys.length);
-        }, 0);
+        setTimeout(() => updateNavigation(stepKeys.length), 0);
       }
 
-      // ▼▼ ナビゲーションおよびアコーディオンの同期更新 ▼▼
       function updateNavigation(totalSteps) {
-        if (!totalSteps) {
-          totalSteps = document.querySelectorAll('.step-content').length;
-        }
-
+        if (!totalSteps) totalSteps = document.querySelectorAll('.step-content').length;
         const wrapper = document.getElementById('form-steps-wrapper');
         const steps = document.querySelectorAll('.step-content');
-
         wrapper.style.transform = `translateX(-${currentStepIndex * 100}%)`;
-
         const activeStep = steps[currentStepIndex];
-        if (activeStep) {
-          wrapper.style.height = activeStep.offsetHeight + 'px';
-        }
+        if (activeStep) wrapper.style.height = activeStep.offsetHeight + 'px';
 
-        document.getElementById('btn-prev').style.display =
-          currentStepIndex === 0 ? 'none' : 'block';
-        document.getElementById('btn-next').innerText =
-          currentStepIndex === totalSteps - 1 ? '確認画面へ進む' : '次へ';
-
+        document.getElementById('btn-prev').style.display = currentStepIndex === 0 ? 'none' : 'block';
+        document.getElementById('btn-next').innerText = currentStepIndex === totalSteps - 1 ? '確認画面へ進む' : '次へ';
         const displayStep = currentStepIndex + 1;
-        document.getElementById('progress-fill').style.width =
-          `${(displayStep / totalSteps) * 100}%`;
-        document.getElementById('progress-text').innerHTML =
-          `${displayStep} <span>/ ${totalSteps}</span>`;
-
+        document.getElementById('progress-fill').style.width = `${(displayStep / totalSteps) * 100}%`;
+        document.getElementById('progress-text').innerHTML = `${displayStep} <span>/ ${totalSteps}</span>`;
         document.querySelectorAll('.step-card').forEach((card, idx) => {
-          if (idx === currentStepIndex) {
-            card.classList.add('active');
-          } else {
-            card.classList.remove('active');
-          }
+          if (idx === currentStepIndex) card.classList.add('active'); else card.classList.remove('active');
         });
       }
-
-      document.getElementById('btn-prev').addEventListener('click', () => {
-        if (currentStepIndex > 0) {
-          currentStepIndex--;
-          updateNavigation();
-        }
-      });
-
+      document.getElementById('btn-prev').addEventListener('click', () => { if (currentStepIndex > 0) { currentStepIndex--; updateNavigation(); } });
       document.getElementById('btn-next').addEventListener('click', () => {
         const totalSteps = document.querySelectorAll('.step-content').length;
-        if (currentStepIndex < totalSteps - 1) {
-          currentStepIndex++;
-          updateNavigation();
-        } else {
-          alert('確認画面へ遷移します。(モックのためここで終了)');
-        }
+        if (currentStepIndex < totalSteps - 1) { currentStepIndex++; updateNavigation(); } else alert('確認画面へ遷移します。');
       });
 
       // 初回起動用のデータ
       const initialRawData = {
         theme: {
-          primaryColor: '#3991e2',
-          primaryHoverColor: '#1568b9',
-          progressBgColor: '#f1fbff',
-          size: 'normal' // ★初期サイズの指定
+          primaryColor: "#3991e2",
+          primaryHoverColor: "#1568b9",
+          progressBgColor: "#f1fbff",
+          pc: { sizePreset: "normal", ...PRESETS.normal },
+          sp: { sizePreset: "small", ...PRESETS.small }
         },
         steps: [
           {
-            step: 1,
-            order: 1,
-            label: '名前（漢字）',
-            hint: '名前（フリガナ）に自動入力されます。',
-            errorMessag: 'サンプルのエラーメッセージです。',
-            isRequired: true,
-            flexDirection: 'row',
-            flexWrap: false,
+            step: 1, order: 1, label: '名前（漢字）', hint: '名前（フリガナ）に自動入力されます。', isRequired: true,
+            pcFlexDirection: 'row', spFlexDirection: 'column', pcFlexWrap: false, spFlexWrap: false,
             field: [
-              {
-                name: 'field_1',
-                hasMark: true,
-                type: 'text',
-                placeholder: '田中',
-                optionValueType: 'furigana',
-                furiganaName: 'field_3',
-                prefix: '姓：',
-              },
-              {
-                name: 'field_2',
-                hasMark: true,
-                type: 'text',
-                placeholder: '太郎',
-                optionValueType: 'furigana',
-                furiganaName: 'field_4',
-                prefix: '名：',
-              },
-            ],
+              { name: 'field_1', hasMark: true, type: 'text', placeholder: '田中', optionValueType: 'furigana', furiganaName: 'field_3', prefix: '姓：' },
+              { name: 'field_2', hasMark: true, type: 'text', placeholder: '太郎', optionValueType: 'furigana', furiganaName: 'field_4', prefix: '名：' }
+            ]
           },
           {
-            step: 1,
-            order: 2,
-            flexDirection: 'row',
-            flexWrap: false,
-            label: '名前（フリガナ）',
-            errorMessag: 'サンプルのエラーメッセージです。',
-            isRequired: true,
+            step: 1, order: 2, label: '名前（フリガナ）', isRequired: true,
+            pcFlexDirection: 'row', spFlexDirection: 'column', pcFlexWrap: false, spFlexWrap: false,
             field: [
-              {
-                name: 'field_3',
-                hasMark: true,
-                type: 'text',
-                placeholder: 'タナカ',
-                optionValueType: 'furigana',
-                furiganaName: '',
-                prefix: 'セイ：',
-              },
-              {
-                name: 'field_4',
-                hasMark: true,
-                type: 'text',
-                placeholder: 'タロウ',
-                optionValueType: 'furigana',
-                furiganaName: '',
-                prefix: 'メイ：',
-              },
-            ],
+              { name: 'field_3', hasMark: true, type: 'text', placeholder: 'タナカ', optionValueType: 'furigana', prefix: 'セイ：' },
+              { name: 'field_4', hasMark: true, type: 'text', placeholder: 'タロウ', optionValueType: 'furigana', prefix: 'メイ：' }
+            ]
           },
           {
-            step: 2,
-            order: 1,
-            label: '宿泊人数（大人）',
-            errorMessag: 'サンプルのエラーメッセージです。',
-            isRequired: true,
-            field: [
-              {
-                name: 'field_5',
-                type: 'select',
-                option: ['1人', '2人', '3人', '4人', '4人以上'],
-                width: 300 // ★幅指定のサンプル
-              },
-            ],
+            step: 2, order: 1, label: '宿泊人数（大人）', isRequired: true,
+            pcFlexDirection: 'row', spFlexDirection: 'column', pcFlexWrap: false, spFlexWrap: false,
+            field: [{ name: 'field_5', type: 'select', option: ['1人', '2人', '3人', '4人', '4人以上'], pcWidth: 300 }]
           },
           {
-            step: 4,
-            order: 1,
-            label: '想定の旅費',
-            hint: ',（カンマ）を入れないでください。',
-            errorMessag: 'サンプルのエラーメッセージです。',
-            isRequired: true,
-            field: [
-              {
-                name: 'field_6',
-                hasMark: true,
-                type: 'text',
-                placeholder: '入力例',
-                optionValueType: 'justHalfSizeNumber',
-                prefix: '税込',
-                suffix: '円',
-                width: 400 // ★幅指定のサンプル
-              },
-            ],
+            step: 2, order: 2, label: '宿泊人数（子供）', isRequired: true,
+            pcFlexDirection: 'row', spFlexDirection: 'column', pcFlexWrap: false, spFlexWrap: false,
+            field: [{ name: 'field_7', type: 'select', option: ['0人', '1人', '2人', '3人', '4人', '4人以上'], pcWidth: 300 }]
           },
           {
-            step: 2,
-            order: 2,
-            label: '宿泊人数（子供）',
-            errorMessag: 'サンプルのエラーメッセージです。',
-            isRequired: true,
-            field: [
-              {
-                name: 'field_7',
-                type: 'select',
-                option: ['0人', '1人', '2人', '3人', '4人', '4人以上'],
-                width: 300
-              },
-            ],
+            step: 2, order: 3, label: '展望タイプ', isRequired: true,
+            pcFlexDirection: 'row', spFlexDirection: 'column', pcFlexWrap: false, spFlexWrap: false,
+            field: [{ name: 'field_8', type: 'radio', option: ['海側', '山側', '希望なし'], pcWidth: 200 }]
           },
           {
-            step: 2,
-            order: 3,
-            label: '展望タイプ',
-            errorMessag: 'サンプルのエラーメッセージです。',
-            isRequired: true,
-            flexDirection: 'row',
-            flexWrap: false,
-            field: [
-              {
-                name: 'field_8',
-                type: 'radio',
-                option: ['海側', '山側', '希望なし'],
-                width: 200 // ★ラジオボタンの幅指定のサンプル
-              },
-            ],
-          },
-          {
-            step: 2,
-            order: 4,
-            label: '客室タイプ',
-            errorMessag: 'サンプルのエラーメッセージです。',
-            isRequired: true,
-            flexDirection: 'row',
-            flexWrap: false,
-            field: [
-              {
-                name: 'field_9',
-                type: 'radio',
-                option: ['洋室', '和室', '和洋室'],
-              },
-            ],
-          },
-          {
-            step: 3,
-            order: 1,
-            label: '移動手段',
-            hint: '複数選択可',
-            errorMessag: 'サンプルのエラーメッセージです。',
-            isRequired: true,
-            flexDirection: 'row',
-            flexWrap: true,
-            field: [
-              {
-                name: 'field_10',
-                type: 'checkbox',
-                option: ['自家用車', 'バス', '電車', '新幹線', '飛行機'],
-                width: 150 // ★チェックボックスの幅指定のサンプル
-              },
-            ],
-          },
-          {
-            step: 3,
-            order: 2,
-            label: '知ったきっかけ',
-            hint: '複数選択可',
-            isRequired: false,
-            flexDirection: 'column',
-            flexWrap: false,
-            field: [
-              {
-                name: 'field_11',
-                hasMark: true,
-                type: 'checkbox',
-                option: [
-                  'SNS',
-                  '新聞紙',
-                  'webサイト',
-                  '知人/友人からの紹介',
-                  'その他',
-                ],
-              },
-            ],
-          },
-          {
-            step: 4,
-            order: 2,
-            label: '気になる点があれば記載ください。',
-            isRequired: false,
-            field: [
-              {
-                name: 'field_12',
-                type: 'textarea',
-              },
-            ],
-          },
+            step: 3, order: 1, label: '移動手段', hint: '複数選択可', isRequired: true,
+            pcFlexDirection: 'row', spFlexDirection: 'row', pcFlexWrap: true, spFlexWrap: true,
+            field: [{ name: 'field_10', type: 'checkbox', option: ['自家用車', 'バス', '電車', '新幹線', '飛行機'], pcWidth: 150 }]
+          }
         ]
       };
 
       if (initialRawData.theme) {
-        applyTheme(initialRawData.theme);
+        if(initialRawData.theme.pc) themeData = initialRawData.theme;
       }
-
-      formData = initialRawData.steps.map((item, idx) => ({
-        ...item,
-        id: 'init_' + idx,
-      }));
+      formData = initialRawData.steps.map((item, idx) => ({ ...item, id: 'init_' + idx }));
 
       normalizeData();
+      applyThemeStyles();
       renderEditor();
       generateForm();
+      renderDesignTab();
     </script>
   </body>
 </html>
